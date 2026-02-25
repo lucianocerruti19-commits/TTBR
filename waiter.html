@@ -75,12 +75,7 @@ input, textarea{
   <h1>Panel Mozo</h1>
 </header>
 
-<section class="section">
-  <h2>Nombre del mozo</h2>
-  <input id="mozoNombre">
-  <button onclick="guardarMozo()">Guardar</button>
-</section>
-
+<!-- TOMAR PEDIDO COMO MOZO -->
 <section class="section card">
   <h2>Tomar pedido</h2>
 
@@ -97,8 +92,10 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
+<!-- PEDIDOS (confirmar / cobrar) -->
 <section class="section">
   <h2>Pedidos</h2>
+  <div id="pendientes"></div>
   <div id="mesas"></div>
 </section>
 
@@ -128,7 +125,6 @@ const db = getFirestore(app);
 let carrito = [];
 let total = 0;
 let categorias = [];
-let mozo = "";
 
 /* SONIDO */
 function sonido(){
@@ -139,9 +135,7 @@ function sonido(){
 function notificar(mensaje){
   if("Notification" in window){
     Notification.requestPermission().then(p=>{
-      if(p === "granted"){
-        new Notification(mensaje);
-      }
+      if(p === "granted") new Notification(mensaje);
     });
   }
 }
@@ -157,14 +151,6 @@ function vibrar(){
 document.addEventListener("click", e=>{
  if(e.target.tagName==="BUTTON") sonido();
 });
-
-/* GUARDAR MOZO */
-window.guardarMozo = () => {
-  const n = document.getElementById("mozoNombre").value;
-  if(!n) return;
-  mozo = n;
-  alert("Mozo: " + mozo);
-};
 
 /* CATEGORÍAS */
 function cargarCategorias(){
@@ -232,7 +218,7 @@ window.quitar = (i) => {
   renderCarrito();
 };
 
-/* ENVIAR PEDIDO */
+/* ENVIAR PEDIDO (mozo) */
 window.enviarPedido = async () => {
   if(carrito.length === 0) return alert("Carrito vacío");
 
@@ -241,9 +227,8 @@ window.enviarPedido = async () => {
     total,
     mesa: document.getElementById("mesa").value,
     nota: document.getElementById("nota").value,
-    estado: "en_cocina",
-    creadoPor: "mozo",
-    mozo,
+    estado: "pendiente_mozo",
+    creadoPor: "cliente",
     createdAt: new Date()
   });
 
@@ -252,56 +237,73 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  // aviso
   if("Notification" in window){
     Notification.requestPermission().then(p=>{
       if(p==="granted") new Notification("Pedido enviado ✔");
     });
   }
-
-  if("vibrate" in navigator){
-    navigator.vibrate([200,100,200]);
-  }
-
-  document.body.style.background = "#2ecc71";
-  document.body.innerHTML = "<h1 style='text-align:center; color:white;'>Pedido enviado ✔</h1>";
-
-  setTimeout(()=>location.reload(),2000);
+  if("vibrate" in navigator) navigator.vibrate([200,100,200]);
 };
 
-/* PEDIDOS Y ESTADOS */
+/* PEDIDOS CLIENTE → CONFIRMAR */
 onSnapshot(collection(db,"pedidos"), snap=>{
+  const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
+
+  pend.innerHTML = "";
   cont.innerHTML = "";
 
   snap.forEach(d=>{
     const data = d.data();
 
-    // estados: en_cocina -> listo -> pago_pendiente -> pagado
+    // pedidos del cliente sin confirmar
+    if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
+      pend.innerHTML += `
+      <div class="card">
+        <h3>Mesa: ${data.mesa || "sin mesa"}</h3>
+        <p>Total: $${data.total}</p>
+        <p>Nota: ${data.nota || "sin nota"}</p>
+
+        <input id="mesa-${d.id}" placeholder="Asignar mesa">
+        <button onclick="confirmar('${d.id}')">Confirmar pedido</button>
+      </div>`;
+    }
+
+    // pedidos ya confirmados o en cocina
+    if(data.estado && data.estado !== "pagado"){
+      cont.innerHTML += `
+      <div class="card">
+        <h3>Mesa ${data.mesa}</h3>
+        <p><strong>Estado:</strong> ${data.estado}</p>
+        <p><strong>Total:</strong> $${data.total}</p>
+        <p><strong>Items:</strong><br>
+          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+        </p>
+
+        <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
+        <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
+      </div>`;
+    }
+
     if(data.estado === "listo"){
       notificar("Pedido listo mesa " + data.mesa);
       vibrar();
-      data.estado = "pago_pendiente";
-      updateDoc(doc(db,"pedidos", d.id), { estado:"pago_pendiente" });
     }
-
-    // si está pagado no se muestra
-    if(data.estado === "pagado") return;
-
-    cont.innerHTML += `
-    <div class="card">
-      <h3>Mesa ${data.mesa}</h3>
-      <p><strong>Estado:</strong> ${data.estado}</p>
-      <p><strong>Total:</strong> $${data.total}</p>
-      <p><strong>Items:</strong><br>
-        ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
-      </p>
-
-      <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
-      <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
-    </div>`;
   });
 });
+
+/* CONFIRMAR (cliente → cocina) */
+window.confirmar = async (id) => {
+  const m = document.getElementById(`mesa-${id}`).value;
+
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"en_cocina",
+    mesa: m || ""
+  });
+
+  notificar("Pedido confirmado → cocina");
+  vibrar();
+};
 
 /* COBRAR (solo aquí pide nombre) */
 window.cobrar = async (id) => {
