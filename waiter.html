@@ -30,6 +30,13 @@ h2{
   margin-bottom:32px;
 }
 
+/* GRID DE SECCIONES */
+#tabsCategorias{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:8px;
+}
+
 .card{
   background:#101010;
   padding:18px;
@@ -75,7 +82,7 @@ input, textarea{
   <h1>Panel Mozo</h1>
 </header>
 
-<!-- TOMAR PEDIDO COMO MOZO -->
+<!-- TOMAR PEDIDO -->
 <section class="section card">
   <h2>Tomar pedido</h2>
 
@@ -92,10 +99,15 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- PEDIDOS (confirmar / cobrar) -->
+<!-- PEDIDOS PENDIENTES DEL CLIENTE -->
 <section class="section">
-  <h2>Pedidos</h2>
+  <h2>Pedidos pendientes</h2>
   <div id="pendientes"></div>
+</section>
+
+<!-- PEDIDOS EN PROCESO / LISTOS -->
+<section class="section">
+  <h2>Estado de mesas</h2>
   <div id="mesas"></div>
 </section>
 
@@ -237,15 +249,17 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  if("Notification" in window){
-    Notification.requestPermission().then(p=>{
-      if(p==="granted") new Notification("Pedido enviado ✔");
-    });
-  }
-  if("vibrate" in navigator) navigator.vibrate([200,100,200]);
+  // pantalla verde cuando el MOZO envía a cocina
+  document.body.style.background = "#2ecc71";
+  document.body.innerHTML = `
+    <h1 style="text-align:center; color:white; margin-top:40vh;">
+      Pedido enviado ✔
+    </h1>
+  `;
+  setTimeout(()=>location.reload(),2000);
 };
 
-/* PEDIDOS CLIENTE → CONFIRMAR */
+/* PEDIDOS CLIENTE → CONFIRMAR (solo esta parte) */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
@@ -256,7 +270,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
   snap.forEach(d=>{
     const data = d.data();
 
-    // pedidos del cliente sin confirmar
+    // SOLO confirmar cuando viene del cliente
     if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
       pend.innerHTML += `
       <div class="card">
@@ -269,7 +283,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       </div>`;
     }
 
-    // pedidos ya confirmados o en cocina
+    // estado de cocina / listo / cobro
     if(data.estado && data.estado !== "pagado"){
       cont.innerHTML += `
       <div class="card">
