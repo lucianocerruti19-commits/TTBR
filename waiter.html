@@ -2,69 +2,119 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mozo</title>
 <style>
 body{
   background:#050505;
   color:#f5d28a;
   font-family:Arial;
-  padding:10px;
+  padding:12px;
 }
+
+header{
+  text-align:center;
+}
+
+.logo{
+  width:180px;
+}
+
+h1,h2,h3{
+  font-size:26px;
+}
+
 .card{
   background:#101010;
-  padding:16px;
-  border-radius:14px;
-  margin-bottom:14px;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:16px;
   border:1px solid #222;
-  transition: transform .3s, background .3s;
+  font-size:18px;
 }
-.card.listo{
-  background:#d4af37;
-  color:black;
-  transform:scale(1.02);
-}
+
 button{
-  padding:12px;
+  padding:14px;
+  font-size:18px;
   border:none;
-  border-radius:10px;
+  border-radius:12px;
   background:#d4af37;
   color:black;
   font-weight:bold;
+  margin-top:8px;
   cursor:pointer;
+}
+
+input, textarea{
+  font-size:18px;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #222;
+  background:#111;
+  color:white;
+  width:100%;
+  box-sizing:border-box;
+  margin-top:6px;
 }
 </style>
 </head>
 <body>
 
-<h1>Panel Mozo</h1>
+<header>
+  <img src="logo.png" class="logo">
+  <h1>Panel Mozo</h1>
+</header>
+
 <div class="card">
   <h3>Nombre del mozo</h3>
   <input id="mozoNombre">
   <button onclick="guardarMozo()">Guardar</button>
 </div>
 
+<h2>Menú (como cliente)</h2>
+<div id="tabsCategorias" class="card"></div>
+<div id="productos"></div>
+
+<div class="card">
+  <h3>Pedido</h3>
+  <div id="carrito"></div>
+  <p>Total: $<span id="total">0</span></p>
+
+  <input id="mesa" placeholder="Número de mesa">
+  <textarea id="nota" placeholder="Nota para cocina"></textarea>
+
+  <button onclick="enviarPedido()">Enviar a Cocina</button>
+</div>
+
+<h2>Mesas pendientes</h2>
 <div id="mesas"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={/* tu config */};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
-const cont=document.getElementById("mesas");
+
+let carrito=[];
+let total=0;
+let categorias=[];
 let mozo="";
 
+/* SONIDO */
 function sonido(){
   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 
+/* VIBRACIÓN */
 function vibrar(){
   if("vibrate" in navigator){
     navigator.vibrate([200,100,200]);
   }
 }
 
+/* GUARDAR MOZO */
 window.guardarMozo=()=>{
   const n=document.getElementById("mozoNombre").value;
   if(!n) return;
@@ -72,26 +122,129 @@ window.guardarMozo=()=>{
   alert("Mozo: "+mozo);
 };
 
-/* MESAS */
+/* CATEGORÍAS (menú igual que cliente) */
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"),snap=>{
+    categorias=[];
+    snap.forEach(d=>categorias.push(d.data().nombre));
+    renderTabs();
+  });
+}
+
+function renderTabs(){
+  const tabs=document.getElementById("tabsCategorias");
+  tabs.innerHTML="";
+  categorias.forEach(cat=>{
+    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+  });
+}
+
+/* PRODUCTOS */
+window.mostrarCat=(cat)=>{
+  const prodDiv=document.getElementById("productos");
+  prodDiv.innerHTML="";
+
+  onSnapshot(collection(db,"productos"),snap=>{
+    prodDiv.innerHTML="";
+    snap.forEach(d=>{
+      const p=d.data();
+      if(p.categoria===cat){
+        prodDiv.innerHTML+=`
+        <div class="card">
+          <h3>${p.nombre}</h3>
+          <p>$${p.precio}</p>
+          <button onclick="agregar('${p.nombre}',${p.precio})">
+            Agregar
+          </button>
+        </div>`;
+      }
+    });
+  });
+};
+
+/* CARRITO */
+window.agregar=(prod,precio)=>{
+  carrito.push({prod,precio});
+  total+=precio;
+  renderCarrito();
+  sonido();
+};
+
+function renderCarrito(){
+  const c=document.getElementById("carrito");
+  c.innerHTML="";
+  carrito.forEach((it,idx)=>{
+    c.innerHTML+=`
+    <div class="card">
+      ${it.prod} - $${it.precio}
+      <button onclick="quitar(${idx})">X</button>
+    </div>`;
+  });
+  document.getElementById("total").innerText=total;
+}
+
+window.quitar=(i)=>{
+  total-=carrito[i].precio;
+  carrito.splice(i,1);
+  renderCarrito();
+  sonido();
+};
+
+/* ENVIAR PEDIDO */
+window.enviarPedido=async()=>{
+  const mesa=document.getElementById("mesa").value;
+  const nota=document.getElementById("nota").value;
+
+  if(!mesa) return alert("Ingrese mesa");
+  if(!mozo) return alert("Ingrese nombre del mozo");
+
+  await addDoc(collection(db,"pedidos"),{
+    items:carrito,
+    total,
+    mesa,
+    mozo,
+    nota,
+    estado:"pendiente",
+    createdAt:new Date(),
+    creadoPor:"mozo"
+  });
+
+  carrito=[];
+  total=0;
+  renderCarrito();
+  document.getElementById("nota").value="";
+
+  document.body.style.background="#d4af37";
+  document.body.innerHTML="<h1 style='text-align:center'>Pedido enviado ✔</h1>";
+
+  setTimeout(()=>location.reload(),2000);
+  sonido();
+};
+
+/* MESAS PENDIENTES */
 onSnapshot(collection(db,"pedidos"),snap=>{
+  const cont=document.getElementById("mesas");
   cont.innerHTML="";
 
   snap.forEach(d=>{
     const data=d.data();
-    if(data.estado === "listo"){
+
+    if(data.estado==="listo"){
+      vibrar();
+    }
+
+    if(data.estado==="listo" || data.estado==="pendiente"){
       cont.innerHTML+=`
-      <div class="card listo">
+      <div class="card ${data.estado==='listo'?'listo':''}">
         <h3>Mesa ${data.mesa}</h3>
         <p><strong>Total:</strong> $${data.total}</p>
-        <p><strong>Nota:</strong> ${data.nota || "sin nota"}</p>
+        <p><strong>Nota:</strong> ${data.nota||"sin nota"}</p>
         <p><strong>Items:</strong><br>
           ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
         <input id="cobro-${d.id}" placeholder="Mozo que cobra">
         <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
       </div>`;
-
-      vibrar();
     }
   });
 });
@@ -109,6 +262,8 @@ window.cobrar=async(id)=>{
   sonido();
   vibrar();
 };
+
+cargarCategorias();
 </script>
 </body>
 </html>
