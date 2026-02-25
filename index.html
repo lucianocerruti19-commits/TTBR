@@ -13,7 +13,7 @@ body{
   margin:0;
   background:#050505;
   color:#f5d28a;
-  font-family:'Arial', sans-serif;
+  font-family:Arial, sans-serif;
 }
 
 header{
@@ -84,8 +84,11 @@ h2,h3{
 <!-- CLIENTE VISUAL -->
 <section id="cliente" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
+
   <h3>Menú</h3>
-  <div id="tabsCategorias"></div>
+
+  <div class="tabs" id="tabsCategorias"></div>
+
   <div id="productos"></div>
 </section>
 
@@ -123,7 +126,7 @@ const firebaseConfig = {
  projectId:"menu-pro-app",
  storageBucket:"menu-pro-app.firebasestorage.app",
  messagingSenderId:"42917274964",
- appId:"1:42917274964:web:13e161810ad195718994c1"
+ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 initializeApp(firebaseConfig);
@@ -159,26 +162,35 @@ window.mostrar = (id)=>{
  document.getElementById(id).style.display="block";
 };
 
-/* CLIENTE VISUAL */
+/* CLIENTE VISUAL CON CATEGORIAS */
 onSnapshot(collection(db,"categorias"),snap=>{
  const tabs=document.getElementById("tabsCategorias");
  tabs.innerHTML="";
  snap.forEach(d=>{
-  tabs.innerHTML+=`<button>${d.data().nombre}</button>`;
+  const cat = d.data().nombre;
+  tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
  });
 });
 
-onSnapshot(collection(db,"productos"),snap=>{
+/* MOSTRAR PRODUCTOS DE CATEGORIA */
+window.mostrarCat = (cat)=>{
  const prod=document.getElementById("productos");
  prod.innerHTML="";
- snap.forEach(d=>{
-  const p=d.data();
-  prod.innerHTML+=`
-  <div>
-    ${p.nombre} - $${p.precio}
-  </div>`;
+
+ onSnapshot(collection(db,"productos"),snap=>{
+  prod.innerHTML="";
+  snap.forEach(d=>{
+    const p = d.data();
+    if(p.categoria === cat){
+      prod.innerHTML+=`
+      <div class="card">
+        <h4>${p.nombre}</h4>
+        <p>$${p.precio}</p>
+      </div>`;
+    }
+  });
  });
-});
+};
 </script>
 
 </body>
