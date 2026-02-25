@@ -28,6 +28,14 @@ button{
   background:linear-gradient(145deg, #d8b14a, #b58c2f);
   color:black;
   font-weight:bold;
+  margin-top:6px;
+}
+
+input, select{
+  padding:10px;
+  border-radius:10px;
+  width:100%;
+  margin-bottom:8px;
 }
 </style>
 </head>
@@ -35,58 +43,196 @@ button{
 
 <h1>Panel Mozo</h1>
 
-<div id="pedidos"></div>
+<div class="card">
+  <h3>Ingresar mozo</h3>
+  <input id="nombreMozo" placeholder="Nombre del mozo">
+  <button onclick="guardarMozo()">Guardar</button>
+</div>
+
+<div id="seccionMesa" style="display:none">
+  <div class="card">
+    <h3>Cargar mesa</h3>
+    <input id="mesa" placeholder="Número de mesa">
+    <button onclick="mostrarMenu()">Abrir menú</button>
+  </div>
+
+  <div id="menu" style="display:none">
+    <h3>Menú (seleccionar)</h3>
+    <div id="categorias"></div>
+    <div id="productos"></div>
+
+    <div class="card">
+      <h3>Pedido</h3>
+      <div id="carrito"></div>
+      <p>Total: $<span id="total">0</span></p>
+      <input id="nota" placeholder="Nota (sin aderezo, etc)">
+      <button onclick="enviarPedido()">Enviar pedido</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Mesas pendientes</h3>
+  <div id="pendientes"></div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+  apiKey: "TU_API_KEY",
   authDomain: "menu-pro-app.firebaseapp.com",
-  projectId: "menu-pro-app",
-  storageBucket: "menu-pro-app.firebasestorage.app",
-  messagingSenderId: "42917274964",
-  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_STORAGE",
+  messagingSenderId: "TU_SENDER",
+  appId: "TU_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const contenedor = document.getElementById("pedidos");
 
-/* VIBRACIÓN */
-function vibrar(){
-  if("vibrate" in navigator) navigator.vibrate([300,200,300]);
+let mozo = "";
+let carrito = [];
+let total = 0;
+
+/* GUARDAR MOZO */
+window.guardarMozo = () => {
+  const n = document.getElementById("nombreMozo").value;
+  if(!n) return;
+  mozo = n;
+  document.getElementById("seccionMesa").style.display = "block";
+};
+
+/* MOSTRAR MENU */
+window.mostrarMenu = () => {
+  document.getElementById("menu").style.display = "block";
+  cargarCategorias();
+};
+
+/* CATEGORIAS */
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"), snap=>{
+    const c = document.getElementById("categorias");
+    c.innerHTML = "";
+
+    snap.forEach(d=>{
+      const cat = d.data().nombre;
+      c.innerHTML += `<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+    });
+  });
 }
 
-/* PEDIDOS LISTOS */
-onSnapshot(collection(db,"pedidos"), snap=>{
-  contenedor.innerHTML = "";
+/* PRODUCTOS POR CAT */
+window.mostrarCat = (cat) => {
+  const p = document.getElementById("productos");
+  p.innerHTML = "";
 
-  snap.forEach(d=>{
-    const data = d.data();
+  onSnapshot(collection(db,"productos"), snap=>{
+    p.innerHTML = "";
 
-    if(data.estado === "listo"){
-      vibrar();
-
-      contenedor.innerHTML += `
-      <div class="card">
-        <h3>Mesa ${data.mesa}</h3>
-        <p><strong>Items:</strong><br>
-          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
-        </p>
-        <p><strong>Estado:</strong> ${data.estado}</p>
-
-        <button onclick="entregar('${d.id}')">Entregado</button>
-      </div>`;
-    }
+    snap.forEach(d=>{
+      const prod = d.data();
+      if(prod.categoria === cat){
+        p.innerHTML += `
+        <div class="card">
+          <h4>${prod.nombre}</h4>
+          <p>$${prod.precio}</p>
+          <button onclick="agregar('${prod.nombre}', ${prod.precio})">
+            Agregar
+          </button>
+        </div>`;
+      }
+    });
   });
-});
-
-/* ENTREGAR */
-window.entregar = async (id) => {
-  await updateDoc(doc(db,"pedidos",id),{estado:"entregado"});
 };
+
+/* CARRITO */
+window.agregar = (prod,precio) => {
+  carrito.push({prod,precio});
+  total += precio;
+  renderCarrito();
+};
+
+function renderCarrito(){
+  const c = document.getElementById("carrito");
+  c.innerHTML = "";
+
+  carrito.forEach((it,idx)=>{
+    c.innerHTML += `
+    <div class="card">
+      ${it.prod} - $${it.precio}
+      <button onclick="quitar(${idx})">X</button>
+    </div>`;
+  });
+
+  document.getElementById("total").innerText = total;
+}
+
+window.quitar = (i) => {
+  total -= carrito[i].precio;
+  carrito.splice(i,1);
+  renderCarrito();
+};
+
+/* ENVIAR PEDIDO */
+window.enviarPedido = async () => {
+  const mesa = document.getElementById("mesa").value;
+  const nota = document.getElementById("nota").value;
+
+  if(!mesa || carrito.length === 0) return;
+
+  await addDoc(collection(db,"pedidos"),{
+    mesa,
+    items: carrito,
+    total,
+    estado:"pendiente",
+    createdAt:new Date(),
+    creadoPor:"mozo",
+    mozo,
+    nota
+  });
+
+  carrito = [];
+  total = 0;
+  renderCarrito();
+  alert("Pedido enviado");
+};
+
+/* PEDIDOS PENDIENTES */
+function pendientes(){
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    const p = document.getElementById("pendientes");
+    p.innerHTML = "";
+
+    snap.forEach(d=>{
+      const data = d.data();
+
+      if(data.estado !== "entregado"){
+        p.innerHTML += `
+        <div class="card">
+          <h4>Mesa ${data.mesa}</h4>
+          <p>${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}</p>
+          <p><strong>Estado:</strong> ${data.estado}</p>
+          <button onclick="cobrar('${d.id}')">Cobrar</button>
+        </div>`;
+      }
+    });
+  });
+}
+
+/* COBRAR */
+window.cobrar = async (id) => {
+  const mozoCobro = mozo;
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"entregado",
+    mozoCobro
+  });
+
+  alert("Mesa cobrada");
+};
+
+pendientes();
 </script>
 </body>
 </html>
