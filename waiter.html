@@ -29,22 +29,10 @@ button{
   color:black;
   font-weight:bold;
   margin:4px;
-  cursor:pointer;
 }
 
-button:active{
-  transform:scale(0.97);
-}
+button:active{transform:scale(0.97)}
 
-input{
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #222;
-  background:#111;
-  color:white;
-  width:100%;
-  margin-bottom:8px;
-}
 </style>
 </head>
 <body>
@@ -104,8 +92,11 @@ onSnapshot(collection(db,"pedidos"),snap=>{
       <div class="card">
         <h3>Mesa ${data.mesa}</h3>
         <p><strong>Total:</strong> $${data.total}</p>
-        <p><strong>Estado:</strong> ${data.estado}</p>
         <p><strong>Mozo:</strong> ${data.mozo || "sin asignar"}</p>
+        <p><strong>Items:</strong><br>
+          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+        </p>
+        <p><strong>Estado:</strong> ${data.estado}</p>
 
         <button onclick="cobrar('${d.id}')">
           💲 Cobrar
@@ -117,7 +108,7 @@ onSnapshot(collection(db,"pedidos"),snap=>{
   });
 });
 
-/* COBRAR Y MARCAR PAGADO (REGISTRA MOZO) */
+/* COBRAR Y MARCAR PAGADO */
 window.cobrar=async(id)=>{
   if(!mozo) return alert("Ingresa tu nombre");
 
