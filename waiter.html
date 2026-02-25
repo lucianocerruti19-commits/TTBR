@@ -32,7 +32,6 @@ h2{
   margin-bottom:32px;
 }
 
-/* GRID DE SECCIONES CENTRADO */
 #tabsCategorias{
   display:grid;
   grid-template-columns:repeat(3, 1fr);
@@ -90,7 +89,6 @@ input, textarea{
   <h1>Panel Mozo</h1>
 </header>
 
-<!-- TOMAR PEDIDO -->
 <section class="section card">
   <h2>Tomar pedido</h2>
 
@@ -107,13 +105,11 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- PEDIDOS PENDIENTES -->
 <section class="section">
   <h2>Pedidos pendientes</h2>
   <div id="pendientes"></div>
 </section>
 
-<!-- ESTADO DE MESAS -->
 <section class="section">
   <h2>Estado de mesas</h2>
   <div id="mesas"></div>
@@ -146,30 +142,12 @@ let carrito = [];
 let total = 0;
 let categorias = [];
 
-/* SONIDO */
-function sonido(){
-  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
-}
-
-/* NOTIFICACIÓN */
-function notificar(mensaje){
-  if("Notification" in window){
-    Notification.requestPermission().then(p=>{
-      if(p === "granted") new Notification(mensaje);
-    });
-  }
-}
-
-/* VIBRAR */
-function vibrar(){
-  if("vibrate" in navigator){
-    navigator.vibrate([200,100,200]);
-  }
-}
-
-/* CLICK SONIDO */
+/* CLIC CON SONIDO (opcional) */
 document.addEventListener("click", e=>{
- if(e.target.tagName==="BUTTON") sonido();
+ if(e.target.tagName==="BUTTON"){
+   // sonido simple sin permisos
+   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+ }
 });
 
 /* CATEGORÍAS */
@@ -238,7 +216,7 @@ window.quitar = (i) => {
   renderCarrito();
 };
 
-/* ENVIAR PEDIDO (mozo) */
+/* ENVIAR PEDIDO */
 window.enviarPedido = async () => {
   if(carrito.length === 0) return alert("Carrito vacío");
 
@@ -257,9 +235,6 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  notificar("Pedido enviado ✔");
-  vibrar();
-
   document.body.style.background = "#2ecc71";
   document.body.innerHTML = `
     <h1 style="text-align:center; color:white; margin-top:40vh;">
@@ -269,7 +244,7 @@ window.enviarPedido = async () => {
   setTimeout(()=>location.reload(),2000);
 };
 
-/* PEDIDOS (confirmar y cobrar) */
+/* PEDIDOS */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
@@ -280,7 +255,6 @@ onSnapshot(collection(db,"pedidos"), snap=>{
   snap.forEach(d=>{
     const data = d.data();
 
-    /* PEDIDOS DEL CLIENTE (solo confirmar) */
     if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
       pend.innerHTML += `
       <div class="card">
@@ -293,7 +267,6 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       </div>`;
     }
 
-    /* ESTADO DE MESAS */
     if(data.estado && data.estado !== "pagado"){
       cont.innerHTML += `
       <div class="card">
@@ -308,11 +281,6 @@ onSnapshot(collection(db,"pedidos"), snap=>{
         <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
       </div>`;
     }
-
-    if(data.estado === "listo"){
-      notificar("Pedido listo mesa " + data.mesa);
-      vibrar();
-    }
   });
 });
 
@@ -324,9 +292,6 @@ window.confirmar = async (id) => {
     estado:"en_cocina",
     mesa: m || ""
   });
-
-  notificar("Pedido confirmado → cocina");
-  vibrar();
 };
 
 /* COBRAR */
@@ -338,8 +303,6 @@ window.cobrar = async (id) => {
     estado:"pagado",
     mozoCobro
   });
-
-  vibrar();
 };
 
 cargarCategorias();
