@@ -2,97 +2,118 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cocina</title>
+
 <style>
 body{
   background:#000;
   color:#d4af37;
   font-family:Arial;
-  padding:10px;
-  transition: background 0.8s;
+  padding:12px;
 }
-.dorado{
-  background:#d4af37 !important;
-  color:black !important;
-}
+
 .card{
-  background:#0c0c0c;
+  background:#0b0b0b;
   border:1px solid rgba(212,175,55,0.4);
-  padding:15px;
+  padding:14px;
   border-radius:14px;
-  margin-bottom:15px;
+  margin-bottom:14px;
 }
+
 button{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
+  padding:12px;
   border:none;
-  border-radius:8px;
+  border-radius:10px;
   font-weight:bold;
+  margin-top:6px;
+}
+
+.listo{
   background:#d4af37;
   color:black;
-  cursor:pointer;
+}
+
+.eliminar{
+  background:red;
+  color:white;
+}
+
+.green{
+  background:#0f8f0f !important;
+  color:white !important;
 }
 </style>
 </head>
 <body>
 
-<h1>Cocina</h1>
+<h1>Panel Cocina</h1>
 <audio id="alerta" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
 <div id="pedidos"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const firebaseConfig={/* tu config */};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-const cont=document.getElementById("pedidos");
-const sonido=document.getElementById("alerta");
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_STORAGE",
+  messagingSenderId: "TU_SENDER",
+  appId: "TU_APP_ID"
+};
 
-function sonidoClick(){
-  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
-}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const contenedor = document.getElementById("pedidos");
+const sonido = document.getElementById("alerta");
 
-function dorado(){
-  document.body.classList.add("dorado");
-  setTimeout(()=>document.body.classList.remove("dorado"),1500);
-}
-
-/* PEDIDOS */
-onSnapshot(collection(db,"pedidos"),snap=>{
-  cont.innerHTML="";
+/* PEDIDOS EN TIEMPO REAL */
+onSnapshot(collection(db,"pedidos"), snap=>{
+  contenedor.innerHTML = "";
 
   snap.forEach(d=>{
-    const data=d.data();
+    const data = d.data();
 
-    if(data.estado === "pendiente"){
-      sonido.play();
+    if(data.estado !== "entregado"){
+      if(data.estado === "pendiente") sonido.play();
 
-      cont.innerHTML+=`
+      contenedor.innerHTML += `
       <div class="card">
         <h3>Mesa ${data.mesa}</h3>
-        <p><strong>Mozo:</strong> ${data.mozo}</p>
+        <p>${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}</p>
         <p><strong>Nota:</strong> ${data.nota || "sin nota"}</p>
-        <p><strong>Items:</strong><br>
-          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
-        </p>
-        <button onclick="marcar('${d.id}')">LISTO</button>
+        <p><strong>Estado:</strong> ${data.estado}</p>
+
+        <button class="listo" onclick="marcar('${d.id}')">
+          LISTO
+        </button>
+        <button class="eliminar" onclick="borrar('${d.id}')">
+          Eliminar
+        </button>
       </div>`;
     }
   });
 });
 
-/* LISTO */
-window.marcar=async(id)=>{
+/* MARCAR LISTO */
+window.marcar = async (id) => {
   await updateDoc(doc(db,"pedidos",id),{estado:"listo"});
-  sonidoClick();
-  dorado();
 
-  // aviso al mozo (si está abierto)
-  localStorage.setItem("pedidoListo", id);
+  document.body.classList.add("green");
+  setTimeout(()=> document.body.classList.remove("green"), 2000);
+
+  alert("Pedido listo");
+};
+
+/* ELIMINAR */
+window.borrar = async (id) => {
+  if(!confirm("Eliminar?")) return;
+  await deleteDoc(doc(db,"pedidos",id));
 };
 </script>
+
 </body>
 </html>
