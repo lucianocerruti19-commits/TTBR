@@ -29,9 +29,10 @@ button{
   color:black;
   font-weight:bold;
   margin-top:6px;
+  cursor:pointer;
 }
 
-input, select{
+input{
   padding:10px;
   border-radius:10px;
   width:100%;
@@ -42,14 +43,16 @@ input, select{
 <body>
 
 <h1>Panel Mozo</h1>
+<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <div class="card">
-  <h3>Ingresar mozo</h3>
-  <input id="nombreMozo" placeholder="Nombre del mozo">
+  <h3>Nombre del mozo</h3>
+  <input id="nombreMozo" placeholder="Tu nombre">
   <button onclick="guardarMozo()">Guardar</button>
 </div>
 
 <div id="seccionMesa" style="display:none">
+
   <div class="card">
     <h3>Cargar mesa</h3>
     <input id="mesa" placeholder="Número de mesa">
@@ -57,7 +60,7 @@ input, select{
   </div>
 
   <div id="menu" style="display:none">
-    <h3>Menú (seleccionar)</h3>
+    <h3>Menú</h3>
     <div id="categorias"></div>
     <div id="productos"></div>
 
@@ -82,7 +85,7 @@ import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from "ht
 
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
-  authDomain: "menu-pro-app.firebaseapp.com",
+  authDomain: "TU_AUTH_DOMAIN",
   projectId: "TU_PROJECT_ID",
   storageBucket: "TU_STORAGE",
   messagingSenderId: "TU_SENDER",
@@ -95,6 +98,18 @@ const db = getFirestore(app);
 let mozo = "";
 let carrito = [];
 let total = 0;
+
+/* SONIDO GLOBAL */
+document.addEventListener("click", e=>{
+  if(e.target.tagName === "BUTTON"){
+    document.getElementById("click").play();
+  }
+});
+
+/* VIBRAR */
+function vibrar(){
+  if("vibrate" in navigator) navigator.vibrate([300,200,300]);
+}
 
 /* GUARDAR MOZO */
 window.guardarMozo = () => {
@@ -123,7 +138,7 @@ function cargarCategorias(){
   });
 }
 
-/* PRODUCTOS POR CAT */
+/* PRODUCTOS */
 window.mostrarCat = (cat) => {
   const p = document.getElementById("productos");
   p.innerHTML = "";
@@ -196,6 +211,10 @@ window.enviarPedido = async () => {
   carrito = [];
   total = 0;
   renderCarrito();
+
+  document.body.style.background = "#0f8f0f";
+  setTimeout(()=> document.body.style.background = "#050505", 2000);
+
   alert("Pedido enviado");
 };
 
@@ -209,6 +228,8 @@ function pendientes(){
       const data = d.data();
 
       if(data.estado !== "entregado"){
+        if(data.estado === "listo") vibrar();
+
         p.innerHTML += `
         <div class="card">
           <h4>Mesa ${data.mesa}</h4>
