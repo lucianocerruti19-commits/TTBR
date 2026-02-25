@@ -11,6 +11,8 @@ body{
   color:#f5d28a;
   font-family:Arial;
   padding:14px;
+  max-width:900px;
+  margin:0 auto;
 }
 
 header{text-align:center;}
@@ -30,11 +32,17 @@ h2{
   margin-bottom:32px;
 }
 
-/* GRID DE SECCIONES */
+/* GRID DE SECCIONES CENTRADO */
 #tabsCategorias{
   display:grid;
   grid-template-columns:repeat(3, 1fr);
-  gap:8px;
+  gap:10px;
+  justify-items:center;
+}
+
+#tabsCategorias button{
+  width:100%;
+  text-align:center;
 }
 
 .card{
@@ -99,13 +107,13 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- PEDIDOS PENDIENTES DEL CLIENTE -->
+<!-- PEDIDOS PENDIENTES -->
 <section class="section">
   <h2>Pedidos pendientes</h2>
   <div id="pendientes"></div>
 </section>
 
-<!-- PEDIDOS EN PROCESO / LISTOS -->
+<!-- ESTADO DE MESAS -->
 <section class="section">
   <h2>Estado de mesas</h2>
   <div id="mesas"></div>
@@ -249,7 +257,9 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  // pantalla verde cuando el MOZO envía a cocina
+  notificar("Pedido enviado ✔");
+  vibrar();
+
   document.body.style.background = "#2ecc71";
   document.body.innerHTML = `
     <h1 style="text-align:center; color:white; margin-top:40vh;">
@@ -259,7 +269,7 @@ window.enviarPedido = async () => {
   setTimeout(()=>location.reload(),2000);
 };
 
-/* PEDIDOS CLIENTE → CONFIRMAR (solo esta parte) */
+/* PEDIDOS (confirmar y cobrar) */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
@@ -270,7 +280,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
   snap.forEach(d=>{
     const data = d.data();
 
-    // SOLO confirmar cuando viene del cliente
+    /* PEDIDOS DEL CLIENTE (solo confirmar) */
     if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
       pend.innerHTML += `
       <div class="card">
@@ -283,7 +293,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       </div>`;
     }
 
-    // estado de cocina / listo / cobro
+    /* ESTADO DE MESAS */
     if(data.estado && data.estado !== "pagado"){
       cont.innerHTML += `
       <div class="card">
@@ -319,7 +329,7 @@ window.confirmar = async (id) => {
   vibrar();
 };
 
-/* COBRAR (solo aquí pide nombre) */
+/* COBRAR */
 window.cobrar = async (id) => {
   const mozoCobro = document.getElementById(`cobro-${id}`).value;
   if(!mozoCobro) return alert("Ingrese nombre del mozo");
@@ -335,4 +345,4 @@ window.cobrar = async (id) => {
 cargarCategorias();
 </script>
 </body>
-</html> 
+</html>
