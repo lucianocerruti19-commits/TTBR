@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mozo</title>
 
 <style>
@@ -81,7 +82,7 @@ input, textarea{
   <button onclick="guardarMozo()">Guardar</button>
 </section>
 
-<!-- TOMAR PEDIDO COMO MOZO (igual que cliente) -->
+<!-- TOMAR PEDIDO COMO MOZO -->
 <section class="section card">
   <h2>Tomar pedido</h2>
 
@@ -98,7 +99,7 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- PEDIDOS PENDIENTES DEL CLIENTE -->
+<!-- PEDIDOS PENDIENTES DEL CLIENTE (confirmar) -->
 <section class="section">
   <h2>Pedidos pendientes</h2>
   <div id="pendientes"></div>
@@ -260,7 +261,10 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  alert("Pedido enviado al mozo");
+  document.body.style.background = "#2ecc71";
+  document.body.innerHTML = "<h1 style='text-align:center; color:white;'>Pedido enviado ✔</h1>";
+
+  setTimeout(()=>location.reload(),2000);
 };
 
 /* PEDIDOS DEL CLIENTE (confirmar y pasar a cocina) */
@@ -298,7 +302,8 @@ onSnapshot(collection(db,"pedidos"), snap=>{
           ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
 
-        <button onclick="entregar('${d.id}')">✔ Entregar</button>
+        <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
+        <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
       </div>`;
     }
   });
@@ -313,17 +318,20 @@ window.confirmar = async (id) => {
     mesa: m || ""
   });
 
-  notificar("Pedido confirmado y enviado a cocina");
+  notificar("Pedido confirmado → cocina");
   vibrar();
 };
 
-/* ENTREGAR */
-window.entregar = async (id) => {
+/* COBRAR */
+window.cobrar = async (id) => {
+  const mozoCobro = document.getElementById(`cobro-${id}`).value;
+  if(!mozoCobro) return alert("Ingrese nombre del mozo");
+
   await updateDoc(doc(db,"pedidos",id),{
-    estado:"entregado"
+    estado:"pagado",
+    mozoCobro
   });
 
-  notificar("Pedido entregado ✔");
   vibrar();
 };
 
