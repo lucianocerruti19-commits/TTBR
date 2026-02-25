@@ -99,16 +99,16 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- PEDIDOS PENDIENTES DEL CLIENTE (confirmar) -->
+<!-- PEDIDOS (estado cocina) -->
 <section class="section">
-  <h2>Pedidos pendientes</h2>
-  <div id="pendientes"></div>
+  <h2>Pedidos</h2>
+  <div id="mesas"></div>
 </section>
 
-<!-- MESAS ACTIVAS -->
+<!-- PEDIDOS PENDIENTES CLIENTE (confirmar) -->
 <section class="section">
-  <h2>Mesas activas</h2>
-  <div id="mesas"></div>
+  <h2>Pedidos pendientes (cliente)</h2>
+  <div id="pendientes"></div>
 </section>
 
 <script type="module">
@@ -241,7 +241,7 @@ window.quitar = (i) => {
   renderCarrito();
 };
 
-/* ENVIAR PEDIDO (flujo mozo) */
+/* ENVIAR PEDIDO (mozo) */
 window.enviarPedido = async () => {
   if(carrito.length === 0) return alert("Carrito vacío");
 
@@ -250,7 +250,7 @@ window.enviarPedido = async () => {
     total,
     mesa: document.getElementById("mesa").value,
     nota: document.getElementById("nota").value,
-    estado: "pendiente_mozo",
+    estado: "en_cocina",
     creadoPor: "mozo",
     mozo,
     createdAt: new Date()
@@ -261,13 +261,10 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  document.body.style.background = "#2ecc71";
-  document.body.innerHTML = "<h1 style='text-align:center; color:white;'>Pedido enviado ✔</h1>";
-
-  setTimeout(()=>location.reload(),2000);
+  alert("Pedido enviado a cocina");
 };
 
-/* PEDIDOS DEL CLIENTE (confirmar y pasar a cocina) */
+/* PEDIDOS Y ESTADO (cocina / listo) */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
@@ -278,8 +275,8 @@ onSnapshot(collection(db,"pedidos"), snap=>{
   snap.forEach(d=>{
     const data = d.data();
 
-    // pedidos esperando confirmación
-    if(data.estado === "pendiente_mozo"){
+    /* PEDIDOS DEL CLIENTE (confirma mozo) */
+    if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
       pend.innerHTML += `
       <div class="card">
         <h3>Mesa: ${data.mesa || "sin mesa"}</h3>
@@ -291,8 +288,8 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       </div>`;
     }
 
-    // mesas activas
-    if(data.estado !== "pagado"){
+    /* PEDIDOS EN COCINA O LISTOS */
+    if(data.estado){
       cont.innerHTML += `
       <div class="card">
         <h3>Mesa ${data.mesa}</h3>
@@ -306,10 +303,16 @@ onSnapshot(collection(db,"pedidos"), snap=>{
         <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
       </div>`;
     }
+
+    /* NOTIFICAR CUANDO ESTÁ LISTO */
+    if(data.estado === "listo"){
+      notificar("Pedido listo para mesa " + data.mesa);
+      vibrar();
+    }
   });
 });
 
-/* CONFIRMAR PEDIDO Y PASAR A COCINA */
+/* CONFIRMAR (cliente → cocina) */
 window.confirmar = async (id) => {
   const m = document.getElementById(`mesa-${id}`).value;
 
@@ -338,4 +341,4 @@ window.cobrar = async (id) => {
 cargarCategorias();
 </script>
 </body>
-</html> 
+</html>
