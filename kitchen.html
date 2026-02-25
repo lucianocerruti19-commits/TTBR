@@ -2,19 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cocina</title>
-
-<style>
-body{background:#000;color:#d4af37;font-family:Arial;padding:10px}
-.card{background:#0c0c0c;border:1px solid rgba(212,175,55,0.4);padding:15px;border-radius:14px;margin-bottom:15px}
-button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;font-weight:bold}
-.listo{background:#d4af37;color:black}
-</style>
 </head>
 <body>
-
-<h1>Panel Cocina</h1>
+<h1>Cocina</h1>
 <audio id="alerta" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 <div id="pedidos"></div>
 
@@ -22,45 +13,41 @@ button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;font
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const firebaseConfig={
-apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
-authDomain:"menu-pro-app.firebaseapp.com",
-projectId:"menu-pro-app",
-storageBucket:"menu-pro-app.firebasestorage.app",
-messagingSenderId:"42917274964",
-appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
-};
-
+const firebaseConfig={/* tu config */};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
-const contenedor=document.getElementById("pedidos");
+const cont=document.getElementById("pedidos");
 const sonido=document.getElementById("alerta");
 
+/* MOSTRAR */
 onSnapshot(collection(db,"pedidos"),snap=>{
-  contenedor.innerHTML="";
+  cont.innerHTML="";
+
   snap.forEach(d=>{
     const data=d.data();
 
     if(data.estado === "pendiente"){
       sonido.play();
 
-      contenedor.innerHTML+=`
-      <div class="card">
+      cont.innerHTML+=`
+      <div>
         <h3>Mesa ${data.mesa}</h3>
-        <p><strong>Total:</strong> $${data.total}</p>
+        <p><strong>Mozo:</strong> ${data.mozo}</p>
+        <p><strong>Nota:</strong> ${data.nota || "sin nota"}</p>
         <p><strong>Items:</strong><br>
-          ${data.items.map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
-        <button class="listo" onclick="marcar('${d.id}')">LISTO</button>
+        <button onclick="marcar('${d.id}')">LISTO</button>
       </div>`;
     }
   });
 });
 
+/* LISTO */
 window.marcar=async(id)=>{
   await updateDoc(doc(db,"pedidos",id),{estado:"listo"});
+  sonido.play();
 };
 </script>
-
 </body>
 </html>
