@@ -233,20 +233,24 @@ window.quitar = (i)=>{
  renderCarrito();
 };
 
-/* ENVIAR PEDIDO (mozo lo gestiona) */
-window.enviarPedido = async ()=>{
- await addDoc(collection(db,"pedidos"),{
-  items:carrito,
-  total,
-  estado:"pendiente",
-  createdAt:new Date(),
-  creadoPor:"cliente"
- });
+/* ENVIAR PEDIDO (flujo mozo) */
+window.enviarPedido = async () => {
+  if(carrito.length === 0) return alert("Carrito vacío");
 
- carrito=[];
- total=0;
- renderCarrito();
- alert("Pedido enviado al mozo");
+  await addDoc(collection(db,"pedidos"),{
+    items: carrito,
+    total,
+    mesa: "",
+    estado: "pendiente_mozo",
+    createdAt: new Date(),
+    creadoPor: "cliente"
+  });
+
+  carrito = [];
+  total = 0;
+  renderCarrito();
+
+  alert("Pedido enviado al mozo");
 };
 </script>
 
