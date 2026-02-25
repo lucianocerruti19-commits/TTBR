@@ -51,6 +51,7 @@ input, select{
 
 <h1>Panel Admin</h1>
 
+<!-- SONIDO -->
 <audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <!-- PRODUCTOS -->
@@ -77,7 +78,7 @@ input, select{
 
 <!-- PEDIDOS -->
 <div class="card">
-  <h2>Pedidos</h2>
+  <h2>Pedidos / Mesas</h2>
   <div id="pedidos"></div>
 </div>
 
@@ -97,17 +98,31 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* SONIDO */
-function sonido(){
-  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
-}
+let categorias = [];
 
-/* SONIDO EN BOTONES */
+/* SONIDO GLOBAL EN BOTONES */
 document.addEventListener("click", e=>{
   if(e.target.tagName === "BUTTON"){
-    sonido();
+    document.getElementById("click").play();
   }
 });
+
+/* CATEGORÍAS */
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"), snap=>{
+    categorias = [];
+    snap.forEach(d => categorias.push(d.data().nombre));
+    renderSelect();
+  });
+}
+
+function renderSelect(){
+  const select = document.getElementById("prodCategoria");
+  select.innerHTML = "";
+  categorias.forEach(cat=>{
+    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+  });
+}
 
 /* CREAR SECCIÓN */
 window.crearCategoria = async () => {
@@ -117,18 +132,6 @@ window.crearCategoria = async () => {
   await addDoc(collection(db,"categorias"),{nombre});
   document.getElementById("nuevaCategoria").value = "";
 };
-
-/* CARGAR SELECT DE CATEGORÍAS */
-function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"), snap=>{
-    const sel = document.getElementById("prodCategoria");
-    sel.innerHTML = "";
-
-    snap.forEach(d=>{
-      sel.innerHTML += `<option value="${d.data().nombre}">${d.data().nombre}</option>`;
-    });
-  });
-}
 
 /* AGREGAR PRODUCTO */
 window.agregarProducto = async () => {
