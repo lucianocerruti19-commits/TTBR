@@ -13,23 +13,21 @@ body{
   padding:12px;
 }
 
-header{
-  text-align:center;
-}
+header{text-align:center;}
+.logo{width:180px;}
 
-.logo{
-  width:180px;
-}
+h1{font-size:26px;}
+h2{font-size:22px;}
 
-h1,h2,h3{
-  font-size:24px;
+.section{
+  margin-bottom:24px;
 }
 
 .card{
   background:#101010;
   padding:16px;
   border-radius:14px;
-  margin-bottom:14px;
+  margin-bottom:12px;
   border:1px solid #222;
   font-size:18px;
 }
@@ -54,7 +52,6 @@ input, textarea{
   color:white;
   width:100%;
   box-sizing:border-box;
-  margin-top:6px;
 }
 </style>
 </head>
@@ -65,33 +62,37 @@ input, textarea{
   <h1>Panel Mozo</h1>
 </header>
 
-<!-- nombre mozo -->
-<div class="card">
-  <h3>Nombre del mozo</h3>
+<!-- SECCIÓN 1: NOMBRE -->
+<section class="section">
+  <h2>Nombre del mozo</h2>
   <input id="mozoNombre">
   <button onclick="guardarMozo()">Guardar</button>
-</div>
+</section>
 
-<!-- menú (igual que cliente) -->
-<h2>Menú</h2>
-<div id="tabsCategorias" class="card"></div>
-<div id="productos"></div>
+<!-- SECCIÓN 2: MENÚ -->
+<section class="section">
+  <h2>Menú</h2>
+  <div id="tabsCategorias"></div>
+  <div id="productos"></div>
+</section>
 
-<!-- pedido -->
-<div class="card">
-  <h3>Pedido</h3>
+<!-- SECCIÓN 3: PEDIDO -->
+<section class="section card">
+  <h2>Pedido</h2>
   <div id="carrito"></div>
   <p>Total: $<span id="total">0</span></p>
 
   <input id="mesa" placeholder="Número de mesa">
-  <textarea id="nota" placeholder="Nota para cocina (opcional)"></textarea>
+  <textarea id="nota" placeholder="Nota para cocina"></textarea>
 
-  <button onclick="enviarPedido()">Enviar a Cocina</button>
-</div>
+  <button onclick="enviarPedido()">Enviar a cocina</button>
+</section>
 
-<!-- mesas pendientes -->
-<h2>Mesas pendientes</h2>
-<div id="mesas"></div>
+<!-- SECCIÓN 4: MESAS -->
+<section class="section">
+  <h2>Mesas pendientes</h2>
+  <div id="mesas"></div>
+</section>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -106,19 +107,19 @@ let total=0;
 let categorias=[];
 let mozo="";
 
-/* sonido */
+/* SONIDO */
 function sonido(){
   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 
-/* vibración */
+/* VIBRACIÓN */
 function vibrar(){
   if("vibrate" in navigator){
     navigator.vibrate([200,100,200]);
   }
 }
 
-/* guardar mozo */
+/* GUARDAR MOZO */
 window.guardarMozo=()=>{
   const n=document.getElementById("mozoNombre").value;
   if(!n) return;
@@ -126,7 +127,7 @@ window.guardarMozo=()=>{
   alert("Mozo: "+mozo);
 };
 
-/* categorías (menu) */
+/* CATEGORÍAS (menú) */
 function cargarCategorias(){
   onSnapshot(collection(db,"categorias"),snap=>{
     categorias=[];
@@ -143,7 +144,7 @@ function renderTabs(){
   });
 }
 
-/* productos */
+/* PRODUCTOS */
 window.mostrarCat=(cat)=>{
   const prod=document.getElementById("productos");
   prod.innerHTML="";
@@ -166,7 +167,7 @@ window.mostrarCat=(cat)=>{
   });
 };
 
-/* carrito */
+/* CARRITO */
 window.agregar=(prod,precio)=>{
   carrito.push({prod,precio});
   total+=precio;
@@ -194,7 +195,7 @@ window.quitar=(i)=>{
   sonido();
 };
 
-/* enviar pedido */
+/* ENVIAR PEDIDO */
 window.enviarPedido=async()=>{
   const mesa=document.getElementById("mesa").value;
   const nota=document.getElementById("nota").value;
@@ -225,7 +226,7 @@ window.enviarPedido=async()=>{
   sonido();
 };
 
-/* mesas pendientes */
+/* MESAS */
 onSnapshot(collection(db,"pedidos"),snap=>{
   const cont=document.getElementById("mesas");
   cont.innerHTML="";
@@ -253,7 +254,7 @@ onSnapshot(collection(db,"pedidos"),snap=>{
   });
 });
 
-/* cobrar */
+/* COBRAR */
 window.cobrar=async(id)=>{
   const mozoCobro=document.getElementById(`cobro-${id}`).value;
   if(!mozoCobro) return alert("Ingrese mozo que cobra");
@@ -269,6 +270,5 @@ window.cobrar=async(id)=>{
 
 cargarCategorias();
 </script>
-
 </body>
 </html>
