@@ -75,14 +75,12 @@ input, textarea{
   <h1>Panel Mozo</h1>
 </header>
 
-<!-- NOMBRE MOZO -->
 <section class="section">
   <h2>Nombre del mozo</h2>
   <input id="mozoNombre">
   <button onclick="guardarMozo()">Guardar</button>
 </section>
 
-<!-- TOMAR PEDIDO -->
 <section class="section card">
   <h2>Tomar pedido</h2>
 
@@ -99,13 +97,6 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- PEDIDOS PENDIENTES (cliente) -->
-<section class="section">
-  <h2>Pedidos pendientes</h2>
-  <div id="pendientes"></div>
-</section>
-
-<!-- PEDIDOS ACTIVOS (cocina / listo) -->
 <section class="section">
   <h2>Pedidos</h2>
   <div id="mesas"></div>
@@ -241,7 +232,7 @@ window.quitar = (i) => {
   renderCarrito();
 };
 
-/* ENVIAR PEDIDO (mozo) */
+/* ENVIAR PEDIDO */
 window.enviarPedido = async () => {
   if(carrito.length === 0) return alert("Carrito vacío");
 
@@ -261,71 +252,58 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  alert("Pedido enviado a cocina");
+  // aviso
+  if("Notification" in window){
+    Notification.requestPermission().then(p=>{
+      if(p==="granted") new Notification("Pedido enviado ✔");
+    });
+  }
+
+  if("vibrate" in navigator){
+    navigator.vibrate([200,100,200]);
+  }
+
+  document.body.style.background = "#2ecc71";
+  document.body.innerHTML = "<h1 style='text-align:center; color:white;'>Pedido enviado ✔</h1>";
+
+  setTimeout(()=>location.reload(),2000);
 };
 
-/* PEDIDOS Y ESTADO (definitivo) */
+/* PEDIDOS Y ESTADOS */
 onSnapshot(collection(db,"pedidos"), snap=>{
-  const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
-
-  pend.innerHTML = "";
   cont.innerHTML = "";
 
   snap.forEach(d=>{
     const data = d.data();
 
-    /* PEDIDOS DEL CLIENTE QUE MOZO CONFIRMA */
-    if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
-      pend.innerHTML += `
-      <div class="card">
-        <h3>Mesa: ${data.mesa || "sin mesa"}</h3>
-        <p>Total: $${data.total}</p>
-        <p>Nota: ${data.nota || "sin nota"}</p>
-
-        <input id="mesa-${d.id}" placeholder="Asignar mesa">
-        <button onclick="confirmar('${d.id}')">Confirmar pedido</button>
-      </div>`;
-    }
-
-    /* PEDIDOS EN COCINA / LISTOS (no pagados) */
-    if(data.estado && data.estado !== "pagado"){
-      cont.innerHTML += `
-      <div class="card">
-        <h3>Mesa ${data.mesa}</h3>
-        <p><strong>Estado:</strong> ${data.estado}</p>
-        <p><strong>Total:</strong> $${data.total}</p>
-        <p><strong>Items:</strong><br>
-          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
-        </p>
-
-        <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
-        <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
-      </div>`;
-    }
-
-    /* NOTIFICAR LISTO */
+    // estados: en_cocina -> listo -> pago_pendiente -> pagado
     if(data.estado === "listo"){
-      notificar("Pedido listo para mesa " + data.mesa);
+      notificar("Pedido listo mesa " + data.mesa);
       vibrar();
+      data.estado = "pago_pendiente";
+      updateDoc(doc(db,"pedidos", d.id), { estado:"pago_pendiente" });
     }
+
+    // si está pagado no se muestra
+    if(data.estado === "pagado") return;
+
+    cont.innerHTML += `
+    <div class="card">
+      <h3>Mesa ${data.mesa}</h3>
+      <p><strong>Estado:</strong> ${data.estado}</p>
+      <p><strong>Total:</strong> $${data.total}</p>
+      <p><strong>Items:</strong><br>
+        ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+      </p>
+
+      <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
+      <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
+    </div>`;
   });
 });
 
-/* CONFIRMAR (cliente → cocina) */
-window.confirmar = async (id) => {
-  const m = document.getElementById(`mesa-${id}`).value;
-
-  await updateDoc(doc(db,"pedidos",id),{
-    estado:"en_cocina",
-    mesa: m || ""
-  });
-
-  notificar("Pedido confirmado → cocina");
-  vibrar();
-};
-
-/* COBRAR (definitivo) */
+/* COBRAR (solo aquí pide nombre) */
 window.cobrar = async (id) => {
   const mozoCobro = document.getElementById(`cobro-${id}`).value;
   if(!mozoCobro) return alert("Ingrese nombre del mozo");
