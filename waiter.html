@@ -62,21 +62,21 @@ input, textarea{
   <h1>Panel Mozo</h1>
 </header>
 
-<!-- SECCIÓN 1: NOMBRE -->
+<!-- NOMBRE MOZO -->
 <section class="section">
   <h2>Nombre del mozo</h2>
   <input id="mozoNombre">
   <button onclick="guardarMozo()">Guardar</button>
 </section>
 
-<!-- SECCIÓN 2: MENÚ -->
+<!-- MENÚ -->
 <section class="section">
   <h2>Menú</h2>
   <div id="tabsCategorias"></div>
   <div id="productos"></div>
 </section>
 
-<!-- SECCIÓN 3: PEDIDO -->
+<!-- PEDIDO -->
 <section class="section card">
   <h2>Pedido</h2>
   <div id="carrito"></div>
@@ -88,7 +88,7 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- SECCIÓN 4: MESAS -->
+<!-- MESAS -->
 <section class="section">
   <h2>Mesas pendientes</h2>
   <div id="mesas"></div>
@@ -98,14 +98,22 @@ input, textarea{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const firebaseConfig={/* tu config */};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
+const firebaseConfig = {
+  apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+  authDomain: "menu-pro-app.firebaseapp.com",
+  projectId: "menu-pro-app",
+  storageBucket: "menu-pro-app.firebasestorage.app",
+  messagingSenderId: "42917274964",
+  appId: "1:42917274964:web:13e161810ad195718994c1"
+};
 
-let carrito=[];
-let total=0;
-let categorias=[];
-let mozo="";
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let carrito = [];
+let total = 0;
+let categorias = [];
+let mozo = "";
 
 /* SONIDO */
 function sonido(){
@@ -120,41 +128,41 @@ function vibrar(){
 }
 
 /* GUARDAR MOZO */
-window.guardarMozo=()=>{
-  const n=document.getElementById("mozoNombre").value;
+window.guardarMozo = () => {
+  const n = document.getElementById("mozoNombre").value;
   if(!n) return;
-  mozo=n;
-  alert("Mozo: "+mozo);
+  mozo = n;
+  alert("Mozo: " + mozo);
 };
 
-/* CATEGORÍAS (menú) */
+/* CATEGORÍAS */
 function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"),snap=>{
-    categorias=[];
-    snap.forEach(d=>categorias.push(d.data().nombre));
+  onSnapshot(collection(db,"categorias"), snap=>{
+    categorias = [];
+    snap.forEach(d => categorias.push(d.data().nombre));
     renderTabs();
   });
 }
 
 function renderTabs(){
-  const tabs=document.getElementById("tabsCategorias");
-  tabs.innerHTML="";
+  const tabs = document.getElementById("tabsCategorias");
+  tabs.innerHTML = "";
   categorias.forEach(cat=>{
-    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+    tabs.innerHTML += `<button onclick="mostrarCat('${cat}')">${cat}</button>`;
   });
 }
 
 /* PRODUCTOS */
-window.mostrarCat=(cat)=>{
-  const prod=document.getElementById("productos");
-  prod.innerHTML="";
+window.mostrarCat = (cat) => {
+  const prod = document.getElementById("productos");
+  prod.innerHTML = "";
 
-  onSnapshot(collection(db,"productos"),snap=>{
-    prod.innerHTML="";
+  onSnapshot(collection(db,"productos"), snap=>{
+    prod.innerHTML = "";
     snap.forEach(d=>{
-      const p=d.data();
-      if(p.categoria===cat){
-        prod.innerHTML+=`
+      const p = d.data();
+      if(p.categoria === cat){
+        prod.innerHTML += `
         <div class="card">
           <h3>${p.nombre}</h3>
           <p>$${p.precio}</p>
@@ -168,78 +176,78 @@ window.mostrarCat=(cat)=>{
 };
 
 /* CARRITO */
-window.agregar=(prod,precio)=>{
-  carrito.push({prod,precio});
-  total+=precio;
+window.agregar = (prod, precio) => {
+  carrito.push({prod, precio});
+  total += precio;
   renderCarrito();
   sonido();
 };
 
 function renderCarrito(){
-  const c=document.getElementById("carrito");
-  c.innerHTML="";
-  carrito.forEach((it,idx)=>{
-    c.innerHTML+=`
+  const c = document.getElementById("carrito");
+  c.innerHTML = "";
+  carrito.forEach((it, idx)=>{
+    c.innerHTML += `
     <div class="card">
       ${it.prod} - $${it.precio}
       <button onclick="quitar(${idx})">X</button>
     </div>`;
   });
-  document.getElementById("total").innerText=total;
+  document.getElementById("total").innerText = total;
 }
 
-window.quitar=(i)=>{
-  total-=carrito[i].precio;
+window.quitar = (i) => {
+  total -= carrito[i].precio;
   carrito.splice(i,1);
   renderCarrito();
   sonido();
 };
 
 /* ENVIAR PEDIDO */
-window.enviarPedido=async()=>{
-  const mesa=document.getElementById("mesa").value;
-  const nota=document.getElementById("nota").value;
+window.enviarPedido = async () => {
+  const mesa = document.getElementById("mesa").value;
+  const nota = document.getElementById("nota").value;
 
   if(!mesa) return alert("Ingrese mesa");
   if(!mozo) return alert("Ingrese nombre del mozo");
 
   await addDoc(collection(db,"pedidos"),{
-    items:carrito,
+    items: carrito,
     total,
     mesa,
     mozo,
     nota,
-    estado:"pendiente",
-    createdAt:new Date(),
-    creadoPor:"mozo"
+    estado: "pendiente",
+    createdAt: new Date(),
+    creadoPor: "mozo"
   });
 
-  carrito=[];
-  total=0;
+  carrito = [];
+  total = 0;
   renderCarrito();
-  document.getElementById("nota").value="";
+  document.getElementById("nota").value = "";
 
-  document.body.style.background="#d4af37";
-  document.body.innerHTML="<h1 style='text-align:center'>Pedido enviado ✔</h1>";
+  document.body.style.background = "#d4af37";
+  document.body.innerHTML = "<h1 style='text-align:center'>Pedido enviado ✔</h1>";
 
   setTimeout(()=>location.reload(),2000);
   sonido();
 };
 
 /* MESAS */
-onSnapshot(collection(db,"pedidos"),snap=>{
-  const cont=document.getElementById("mesas");
-  cont.innerHTML="";
+onSnapshot(collection(db,"pedidos"), snap=>{
+  const cont = document.getElementById("mesas");
+  cont.innerHTML = "";
 
   snap.forEach(d=>{
-    const data=d.data();
+    const data = d.data();
 
-    if(data.estado==="listo"){
+    if(data.estado === "listo"){
       vibrar();
     }
 
-    if(data.estado==="listo" || data.estado==="pendiente"){
-      cont.innerHTML+=`
+    if(data.estado === "listo" || data.estado === "pendiente"){
+      cont.innerHTML += `
       <div class="card ${data.estado==='listo'?'listo':''}">
         <h3>Mesa ${data.mesa}</h3>
         <p><strong>Total:</strong> $${data.total}</p>
@@ -255,8 +263,8 @@ onSnapshot(collection(db,"pedidos"),snap=>{
 });
 
 /* COBRAR */
-window.cobrar=async(id)=>{
-  const mozoCobro=document.getElementById(`cobro-${id}`).value;
+window.cobrar = async (id) => {
+  const mozoCobro = document.getElementById(`cobro-${id}`).value;
   if(!mozoCobro) return alert("Ingrese mozo que cobra");
 
   await updateDoc(doc(db,"pedidos",id),{
