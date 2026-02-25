@@ -32,6 +32,7 @@ button{
   font-weight:bold;
   box-shadow:0 4px 10px rgba(216,177,74,0.5);
   margin-top:8px;
+  cursor:pointer;
 }
 
 input, select{
@@ -50,6 +51,8 @@ input, select{
 
 <h1>Panel Admin</h1>
 
+<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
 <!-- PRODUCTOS -->
 <div class="card">
   <h2>Agregar producto</h2>
@@ -65,9 +68,16 @@ input, select{
   <div id="listaProductos"></div>
 </div>
 
+<!-- SECCIONES -->
+<div class="card">
+  <h2>Crear sección</h2>
+  <input id="nuevaCategoria" placeholder="Nombre sección">
+  <button onclick="crearCategoria()">Crear</button>
+</div>
+
 <!-- PEDIDOS -->
 <div class="card">
-  <h2>Pedidos / Mesas</h2>
+  <h2>Pedidos</h2>
   <div id="pedidos"></div>
 </div>
 
@@ -76,45 +86,47 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebas
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
-  authDomain: "menu-pro-app.firebaseapp.com",
-  projectId: "menu-pro-app",
-  storageBucket: "menu-pro-app.firebasestorage.app",
-  messagingSenderId: "42917274964",
-  appId: "1:42917274964:web:13e161810ad195718994c1"
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_STORAGE",
+  messagingSenderId: "TU_SENDER",
+  appId: "TU_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-let categorias = [];
 
 /* SONIDO */
 function sonido(){
   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 
-/* CLICK CON SONIDO */
-document.addEventListener("click", (e)=>{
+/* SONIDO EN BOTONES */
+document.addEventListener("click", e=>{
   if(e.target.tagName === "BUTTON"){
     sonido();
   }
 });
 
-/* CATEGORÍAS */
+/* CREAR SECCIÓN */
+window.crearCategoria = async () => {
+  const nombre = document.getElementById("nuevaCategoria").value;
+  if(!nombre) return;
+
+  await addDoc(collection(db,"categorias"),{nombre});
+  document.getElementById("nuevaCategoria").value = "";
+};
+
+/* CARGAR SELECT DE CATEGORÍAS */
 function cargarCategorias(){
   onSnapshot(collection(db,"categorias"), snap=>{
-    categorias = [];
-    snap.forEach(d => categorias.push(d.data().nombre));
-    renderSelect();
-  });
-}
+    const sel = document.getElementById("prodCategoria");
+    sel.innerHTML = "";
 
-function renderSelect(){
-  const select = document.getElementById("prodCategoria");
-  select.innerHTML = "";
-  categorias.forEach(cat=>{
-    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+    snap.forEach(d=>{
+      sel.innerHTML += `<option value="${d.data().nombre}">${d.data().nombre}</option>`;
+    });
   });
 }
 
@@ -165,7 +177,7 @@ window.borrarProducto = async (id) => {
   await deleteDoc(doc(db,"productos",id));
 };
 
-/* PEDIDOS CON DETALLE */
+/* PEDIDOS DETALLE */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const cont = document.getElementById("pedidos");
   cont.innerHTML = "";
