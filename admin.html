@@ -1,53 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Toto Bar</title>
+<title>Admin</title>
 
 <style>
 body{
-  background:black;
-  color:#d4af37;
+  background:#050505;
+  color:#f5d28a;
   font-family:Arial;
-  padding:15px;
+  padding:14px;
 }
 
-h1{
-  text-align:center;
-}
+h1{text-align:center;}
 
 .card{
-  border:1px solid #d4af37;
-  padding:15px;
-  border-radius:12px;
-  margin-bottom:15px;
+  background:#101010;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:18px;
+  border:1px solid #2b2b2b;
 }
 
 button{
-  padding:8px;
-  margin-top:5px;
-  margin-right:5px;
+  padding:12px 16px;
   border:none;
-  border-radius:6px;
+  border-radius:12px;
+  background:linear-gradient(145deg, #d8b14a, #b58c2f);
+  color:black;
   font-weight:bold;
+  box-shadow:0 4px 10px rgba(216,177,74,0.5);
+  margin-top:8px;
 }
 
-.pendiente{ background:orange; color:black; }
-.listo{ background:#d4af37; color:black; }
-.entregado{ background:green; color:white; }
-.eliminar{ background:red; color:white; }
+input, select{
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
+  width:100%;
+  box-sizing:border-box;
+  margin-top:6px;
+}
 </style>
 </head>
-
 <body>
 
-<h1>Panel ADMIN</h1>
-<div id="lista"></div>
+<h1>Panel Admin</h1>
+
+<!-- CREAR SECCIÓN -->
+<div class="card">
+  <h2>Crear sección</h2>
+  <input id="nuevaCategoria" placeholder="Nombre">
+  <button onclick="crearCategoria()">Crear</button>
+</div>
+
+<!-- PRODUCTOS -->
+<div class="card">
+  <h2>Agregar producto</h2>
+  <input id="prodNombre" placeholder="Producto">
+  <input id="prodPrecio" placeholder="Precio">
+  <select id="prodCategoria"></select>
+  <button onclick="agregarProducto()">Agregar</button>
+</div>
+
+<!-- LISTA PRODUCTOS -->
+<div class="card">
+  <h2>Productos</h2>
+  <div id="listaProductos"></div>
+</div>
+
+<!-- PEDIDOS -->
+<div class="card">
+  <h2>Pedidos</h2>
+  <div id="pedidos"></div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
@@ -61,41 +94,117 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const contenedor = document.getElementById("lista");
+let categorias = [];
 
-onSnapshot(collection(db,"pedidos"), snapshot=>{
-  contenedor.innerHTML="";
-  snapshot.forEach(docSnap=>{
-    const d = docSnap.data();
-    const fecha = d.fecha?.toDate ? d.fecha.toDate().toLocaleString() : "";
+/* SONIDO */
+function sonido(){
+  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+}
 
-    contenedor.innerHTML+=`
-      <div class="card">
-        <h3>Mesa ${d.mesa}</h3>
-        <p>${d.producto}</p>
-        <p>$${d.precio}</p>
-        <p>Estado: ${d.estado}</p>
-        <p>${fecha}</p>
+/* CLICK CON SONIDO */
+document.addEventListener("click", (e)=>{
+  if(e.target.tagName === "BUTTON"){
+    sonido();
+  }
+});
 
-        <button class="pendiente" onclick="cambiar('${docSnap.id}','pendiente')">Pendiente</button>
-        <button class="listo" onclick="cambiar('${docSnap.id}','listo')">Listo</button>
-        <button class="entregado" onclick="cambiar('${docSnap.id}','entregado')">Entregado</button>
-        <button class="eliminar" onclick="borrar('${docSnap.id}')">Eliminar</button>
-      </div>
-    `;
+/* CATEGORÍAS */
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"), snap=>{
+    categorias = [];
+    snap.forEach(d => categorias.push(d.data().nombre));
+    renderSelect();
+  });
+}
+
+function renderSelect(){
+  const select = document.getElementById("prodCategoria");
+  select.innerHTML = "";
+  categorias.forEach(cat=>{
+    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+  });
+}
+
+/* CREAR CATEGORÍA */
+window.crearCategoria = async () => {
+  const nombre = document.getElementById("nuevaCategoria").value;
+  if(!nombre) return;
+
+  await addDoc(collection(db,"categorias"),{nombre});
+  document.getElementById("nuevaCategoria").value = "";
+};
+
+/* AGREGAR PRODUCTO */
+window.agregarProducto = async () => {
+  const nombre = document.getElementById("prodNombre").value;
+  const precio = document.getElementById("prodPrecio").value;
+  const categoria = document.getElementById("prodCategoria").value;
+
+  if(!nombre || !precio) return;
+
+  await addDoc(collection(db,"productos"),{
+    nombre,
+    precio,
+    categoria
+  });
+
+  document.getElementById("prodNombre").value = "";
+  document.getElementById("prodPrecio").value = "";
+};
+
+/* LISTA PRODUCTOS */
+onSnapshot(collection(db,"productos"), snap=>{
+  const lista = document.getElementById("listaProductos");
+  lista.innerHTML = "";
+
+  snap.forEach(d=>{
+    const p = d.data();
+    lista.innerHTML += `
+    <div class="card">
+      ${p.nombre} - $${p.precio}<br>
+      <strong>${p.categoria}</strong>
+      <button onclick="editar('${d.id}')">Editar</button>
+      <button onclick="borrar('${d.id}')">Borrar</button>
+    </div>`;
   });
 });
 
-window.cambiar = async (id,estado)=>{
-  await updateDoc(doc(db,"pedidos",id),{estado});
-}
+/* EDITAR */
+window.editar = async (id) => {
+  const nuevo = prompt("Nuevo precio");
+  if(!nuevo) return;
+  await updateDoc(doc(db,"productos",id),{precio:nuevo});
+};
 
-window.borrar = async (id)=>{
-  if(confirm("¿Eliminar pedido?")){
-    await deleteDoc(doc(db,"pedidos",id));
-  }
-}
+/* BORRAR */
+window.borrar = async (id) => {
+  await deleteDoc(doc(db,"productos",id));
+};
+
+/* PEDIDOS */
+onSnapshot(collection(db,"pedidos"), snap=>{
+  const cont = document.getElementById("pedidos");
+  cont.innerHTML = "";
+
+  snap.forEach(d=>{
+    const p = d.data();
+    cont.innerHTML += `
+    <div class="card">
+      Mesa ${p.mesa}<br>
+      Total: $${p.total}<br>
+      Estado: ${p.estado}<br>
+      <button onclick="eliminarPedido('${d.id}')">Eliminar</button>
+    </div>`;
+  });
+});
+
+/* ELIMINAR PEDIDO */
+window.eliminarPedido = async (id) => {
+  if(!confirm("Eliminar pedido?")) return;
+  await deleteDoc(doc(db,"pedidos",id));
+};
+
+cargarCategorias();
 </script>
-
 </body>
 </html>
