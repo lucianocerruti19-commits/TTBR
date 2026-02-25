@@ -29,6 +29,7 @@ button{
   color:black;
   font-weight:bold;
   cursor:pointer;
+  margin-top:6px;
 }
 </style>
 </head>
@@ -37,11 +38,32 @@ button{
 <h1>Panel Admin</h1>
 <audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
+<div class="card">
+  <h3>Crear sección</h3>
+  <input id="nuevaCategoria" placeholder="Nombre sección">
+  <button onclick="crearCategoria()">Crear</button>
+</div>
+
+<div class="card">
+  <h3>Crear producto</h3>
+  <input id="prodNombre" placeholder="Producto">
+  <input id="prodPrecio" placeholder="Precio">
+  <select id="prodCategoria"></select>
+  <button onclick="agregarProducto()">Agregar</button>
+</div>
+
 <div id="pedidos"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
@@ -63,7 +85,46 @@ document.addEventListener("click", e=>{
   }
 });
 
-/* PEDIDOS DETALLE */
+/* CARGAR CATEGORIAS EN SELECT */
+function cargarSelect(){
+  onSnapshot(collection(db,"categorias"), snap=>{
+    const sel = document.getElementById("prodCategoria");
+    sel.innerHTML = "";
+
+    snap.forEach(d=>{
+      sel.innerHTML += `<option value="${d.data().nombre}">${d.data().nombre}</option>`;
+    });
+  });
+}
+
+/* CREAR SECCIÓN */
+window.crearCategoria = async () => {
+  const nombre = document.getElementById("nuevaCategoria").value;
+  if(!nombre) return;
+
+  await addDoc(collection(db,"categorias"),{nombre});
+  document.getElementById("nuevaCategoria").value = "";
+};
+
+/* AGREGAR PRODUCTO */
+window.agregarProducto = async () => {
+  const nombre = document.getElementById("prodNombre").value;
+  const precio = document.getElementById("prodPrecio").value;
+  const categoria = document.getElementById("prodCategoria").value;
+
+  if(!nombre || !precio) return;
+
+  await addDoc(collection(db,"productos"),{
+    nombre,
+    precio,
+    categoria
+  });
+
+  document.getElementById("prodNombre").value = "";
+  document.getElementById("prodPrecio").value = "";
+};
+
+/* DETALLE DE PEDIDOS */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const cont = document.getElementById("pedidos");
   cont.innerHTML = "";
@@ -92,6 +153,8 @@ window.eliminar = async (id) => {
   if(!confirm("Eliminar?")) return;
   await deleteDoc(doc(db,"pedidos",id));
 };
+
+cargarSelect();
 </script>
 </body>
 </html>
