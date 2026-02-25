@@ -50,13 +50,6 @@ input, select{
 
 <h1>Panel Admin</h1>
 
-<!-- CREAR SECCIÓN -->
-<div class="card">
-  <h2>Crear sección</h2>
-  <input id="nuevaCategoria" placeholder="Nombre">
-  <button onclick="crearCategoria()">Crear</button>
-</div>
-
 <!-- PRODUCTOS -->
 <div class="card">
   <h2>Agregar producto</h2>
@@ -74,7 +67,7 @@ input, select{
 
 <!-- PEDIDOS -->
 <div class="card">
-  <h2>Pedidos</h2>
+  <h2>Pedidos / Mesas</h2>
   <div id="pedidos"></div>
 </div>
 
@@ -125,15 +118,6 @@ function renderSelect(){
   });
 }
 
-/* CREAR CATEGORÍA */
-window.crearCategoria = async () => {
-  const nombre = document.getElementById("nuevaCategoria").value;
-  if(!nombre) return;
-
-  await addDoc(collection(db,"categorias"),{nombre});
-  document.getElementById("nuevaCategoria").value = "";
-};
-
 /* AGREGAR PRODUCTO */
 window.agregarProducto = async () => {
   const nombre = document.getElementById("prodNombre").value;
@@ -164,7 +148,7 @@ onSnapshot(collection(db,"productos"), snap=>{
       ${p.nombre} - $${p.precio}<br>
       <strong>${p.categoria}</strong>
       <button onclick="editar('${d.id}')">Editar</button>
-      <button onclick="borrar('${d.id}')">Borrar</button>
+      <button onclick="borrarProducto('${d.id}')">Borrar</button>
     </div>`;
   });
 });
@@ -176,23 +160,30 @@ window.editar = async (id) => {
   await updateDoc(doc(db,"productos",id),{precio:nuevo});
 };
 
-/* BORRAR */
-window.borrar = async (id) => {
+/* BORRAR PRODUCTO */
+window.borrarProducto = async (id) => {
   await deleteDoc(doc(db,"productos",id));
 };
 
-/* PEDIDOS */
+/* PEDIDOS CON DETALLE */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const cont = document.getElementById("pedidos");
   cont.innerHTML = "";
 
   snap.forEach(d=>{
     const p = d.data();
+
     cont.innerHTML += `
     <div class="card">
-      Mesa ${p.mesa}<br>
-      Total: $${p.total}<br>
-      Estado: ${p.estado}<br>
+      <h3>Mesa ${p.mesa}</h3>
+      <p><strong>Estado:</strong> ${p.estado}</p>
+      <p><strong>Mozo:</strong> ${p.mozo || "—"}</p>
+      <p><strong>Mozo cobro:</strong> ${p.mozoCobro || "—"}</p>
+      <p><strong>Total:</strong> $${p.total}</p>
+      <p><strong>Nota:</strong> ${p.nota || "sin nota"}</p>
+      <p><strong>Items:</strong><br>
+        ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+      </p>
       <button onclick="eliminarPedido('${d.id}')">Eliminar</button>
     </div>`;
   });
