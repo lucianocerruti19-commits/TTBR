@@ -13,22 +13,35 @@ body{
   padding:14px;
 }
 
+h1{text-align:center;}
+
 .card{
   background:#101010;
-  border:1px solid #2b2b2b;
-  padding:16px;
+  padding:18px;
   border-radius:16px;
-  margin-bottom:16px;
+  margin-bottom:18px;
+  border:1px solid #2b2b2b;
 }
 
 button{
-  padding:12px;
+  padding:12px 16px;
   border:none;
   border-radius:12px;
-  background:linear-gradient(145deg, #d8b14a, #c59a32);
+  background:linear-gradient(145deg, #d8b14a, #b58c2f);
   color:black;
   font-weight:bold;
-  cursor:pointer;
+  box-shadow:0 4px 10px rgba(216,177,74,0.5);
+  margin-top:8px;
+}
+
+input, select{
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
+  width:100%;
+  box-sizing:border-box;
   margin-top:6px;
 }
 </style>
@@ -36,75 +49,74 @@ button{
 <body>
 
 <h1>Panel Admin</h1>
-<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
+<!-- PRODUCTOS -->
 <div class="card">
-  <h3>Crear sección</h3>
-  <input id="nuevaCategoria" placeholder="Nombre sección">
-  <button onclick="crearCategoria()">Crear</button>
-</div>
-
-<div class="card">
-  <h3>Crear producto</h3>
+  <h2>Agregar producto</h2>
   <input id="prodNombre" placeholder="Producto">
   <input id="prodPrecio" placeholder="Precio">
   <select id="prodCategoria"></select>
   <button onclick="agregarProducto()">Agregar</button>
 </div>
 
-<div id="pedidos"></div>
+<!-- LISTA PRODUCTOS -->
+<div class="card">
+  <h2>Productos</h2>
+  <div id="listaProductos"></div>
+</div>
+
+<!-- PEDIDOS -->
+<div class="card">
+  <h2>Pedidos / Mesas</h2>
+  <div id="pedidos"></div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  deleteDoc,
-  doc
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE",
-  messagingSenderId: "TU_SENDER",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+  authDomain: "menu-pro-app.firebaseapp.com",
+  projectId: "menu-pro-app",
+  storageBucket: "menu-pro-app.firebasestorage.app",
+  messagingSenderId: "42917274964",
+  appId: "1:42917274964:web:13e161810ad195718994c1"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const click = document.getElementById("click");
 
-/* SONIDO EN BOTONES */
-document.addEventListener("click", e=>{
+let categorias = [];
+
+/* SONIDO */
+function sonido(){
+  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+}
+
+/* CLICK CON SONIDO */
+document.addEventListener("click", (e)=>{
   if(e.target.tagName === "BUTTON"){
-    click.play();
+    sonido();
   }
 });
 
-/* CARGAR CATEGORIAS EN SELECT */
-function cargarSelect(){
+/* CATEGORÍAS */
+function cargarCategorias(){
   onSnapshot(collection(db,"categorias"), snap=>{
-    const sel = document.getElementById("prodCategoria");
-    sel.innerHTML = "";
-
-    snap.forEach(d=>{
-      sel.innerHTML += `<option value="${d.data().nombre}">${d.data().nombre}</option>`;
-    });
+    categorias = [];
+    snap.forEach(d => categorias.push(d.data().nombre));
+    renderSelect();
   });
 }
 
-/* CREAR SECCIÓN */
-window.crearCategoria = async () => {
-  const nombre = document.getElementById("nuevaCategoria").value;
-  if(!nombre) return;
-
-  await addDoc(collection(db,"categorias"),{nombre});
-  document.getElementById("nuevaCategoria").value = "";
-};
+function renderSelect(){
+  const select = document.getElementById("prodCategoria");
+  select.innerHTML = "";
+  categorias.forEach(cat=>{
+    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+  });
+}
 
 /* AGREGAR PRODUCTO */
 window.agregarProducto = async () => {
@@ -124,7 +136,36 @@ window.agregarProducto = async () => {
   document.getElementById("prodPrecio").value = "";
 };
 
-/* DETALLE DE PEDIDOS */
+/* LISTA PRODUCTOS */
+onSnapshot(collection(db,"productos"), snap=>{
+  const lista = document.getElementById("listaProductos");
+  lista.innerHTML = "";
+
+  snap.forEach(d=>{
+    const p = d.data();
+    lista.innerHTML += `
+    <div class="card">
+      ${p.nombre} - $${p.precio}<br>
+      <strong>${p.categoria}</strong>
+      <button onclick="editar('${d.id}')">Editar</button>
+      <button onclick="borrarProducto('${d.id}')">Borrar</button>
+    </div>`;
+  });
+});
+
+/* EDITAR */
+window.editar = async (id) => {
+  const nuevo = prompt("Nuevo precio");
+  if(!nuevo) return;
+  await updateDoc(doc(db,"productos",id),{precio:nuevo});
+};
+
+/* BORRAR PRODUCTO */
+window.borrarProducto = async (id) => {
+  await deleteDoc(doc(db,"productos",id));
+};
+
+/* PEDIDOS CON DETALLE */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const cont = document.getElementById("pedidos");
   cont.innerHTML = "";
@@ -143,18 +184,18 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       <p><strong>Items:</strong><br>
         ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
       </p>
-      <button onclick="eliminar('${d.id}')">Eliminar</button>
+      <button onclick="eliminarPedido('${d.id}')">Eliminar</button>
     </div>`;
   });
 });
 
-/* ELIMINAR */
-window.eliminar = async (id) => {
-  if(!confirm("Eliminar?")) return;
+/* ELIMINAR PEDIDO */
+window.eliminarPedido = async (id) => {
+  if(!confirm("Eliminar pedido?")) return;
   await deleteDoc(doc(db,"pedidos",id));
 };
 
-cargarSelect();
+cargarCategorias();
 </script>
 </body>
 </html>
