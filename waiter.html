@@ -264,7 +264,7 @@ window.enviarPedido = async () => {
   alert("Pedido enviado a cocina");
 };
 
-/* PEDIDOS Y ESTADO */
+/* PEDIDOS Y ESTADO (definitivo) */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
@@ -275,7 +275,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
   snap.forEach(d=>{
     const data = d.data();
 
-    /* PEDIDOS CLIENTE (confirmar) */
+    /* PEDIDOS DEL CLIENTE QUE MOZO CONFIRMA */
     if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
       pend.innerHTML += `
       <div class="card">
@@ -288,7 +288,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       </div>`;
     }
 
-    /* PEDIDOS EN COCINA / LISTO */
+    /* PEDIDOS EN COCINA / LISTOS (no pagados) */
     if(data.estado && data.estado !== "pagado"){
       cont.innerHTML += `
       <div class="card">
@@ -325,7 +325,7 @@ window.confirmar = async (id) => {
   vibrar();
 };
 
-/* COBRAR (se elimina del panel) */
+/* COBRAR (definitivo) */
 window.cobrar = async (id) => {
   const mozoCobro = document.getElementById(`cobro-${id}`).value;
   if(!mozoCobro) return alert("Ingrese nombre del mozo");
