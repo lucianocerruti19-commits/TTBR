@@ -29,19 +29,19 @@ button{
   margin-top:6px;
 }
 
-.listo{
-  background:#d4af37;
+.preparando{
+  background:#b58c2f;
   color:black;
+}
+
+.listo{
+  background:#0f8f0f;
+  color:white;
 }
 
 .eliminar{
   background:red;
   color:white;
-}
-
-.green{
-  background:#0f8f0f !important;
-  color:white !important;
 }
 </style>
 </head>
@@ -83,12 +83,17 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       contenedor.innerHTML += `
       <div class="card">
         <h3>Mesa ${data.mesa}</h3>
-        <p>${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}</p>
+        <p><strong>Items:</strong><br>
+          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+        </p>
         <p><strong>Nota:</strong> ${data.nota || "sin nota"}</p>
         <p><strong>Estado:</strong> ${data.estado}</p>
 
-        <button class="listo" onclick="marcar('${d.id}')">
-          LISTO
+        <button class="preparando" onclick="preparando('${d.id}')">
+          Preparando
+        </button>
+        <button class="listo" onclick="listo('${d.id}')">
+          Listo
         </button>
         <button class="eliminar" onclick="borrar('${d.id}')">
           Eliminar
@@ -98,12 +103,17 @@ onSnapshot(collection(db,"pedidos"), snap=>{
   });
 });
 
-/* MARCAR LISTO */
-window.marcar = async (id) => {
+/* PREPARANDO */
+window.preparando = async (id) => {
+  await updateDoc(doc(db,"pedidos",id),{estado:"preparando"});
+};
+
+/* LISTO */
+window.listo = async (id) => {
   await updateDoc(doc(db,"pedidos",id),{estado:"listo"});
 
-  document.body.classList.add("green");
-  setTimeout(()=> document.body.classList.remove("green"), 2000);
+  document.body.style.background = "#0f8f0f";
+  setTimeout(()=> document.body.style.background = "#000", 1500);
 
   alert("Pedido listo");
 };
