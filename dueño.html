@@ -2,139 +2,259 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Dueño</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dueño Premium</title>
+
 <style>
 body{
-  background:#000;
-  color:#d4af37;
-  font-family:Arial;
-  padding:15px;
+  background:#050505;
+  color:#f5d28a;
+  font-family:Arial, sans-serif;
+  padding:18px;
 }
-section{margin-bottom:20px;}
+
+h1{text-align:center;}
+
+.card{
+  background:#101010;
+  border:1px solid #2b2b2b;
+  border-radius:16px;
+  padding:20px;
+  margin:12px 0;
+}
+
 button{
-  padding:10px;
+  padding:12px 18px;
   border:none;
-  border-radius:8px;
-  background:#d4af37;
+  border-radius:12px;
+  background:linear-gradient(145deg, #d8b14a, #c59a32);
+  color:black;
   font-weight:bold;
   cursor:pointer;
+  margin:6px 0;
 }
+
+input[type=date]{
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
+  margin-bottom:10px;
+}
+
+canvas{width:100%; max-width:500px;}
 </style>
 </head>
 <body>
 
-<h1>Dueño</h1>
+<h1>Panel Dueño Premium</h1>
 
-<div>
-  <button onclick="sonido(); mostrar('ventas')">Ventas</button>
-  <button onclick="sonido(); mostrar('mozos')">Ventas por mozo</button>
-  <button onclick="sonido(); mostrar('historial')">Historial</button>
-  <button onclick="sonido(); apagarSonido()">Apagar sonido</button>
+<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<!-- VENTAS -->
+<div class="card">
+  <h2>Estadísticas de Ventas</h2>
+  <p>Hoy: $<span id="vHoy">0</span></p>
+  <p>Últimos 7 días: $<span id="vSemana">0</span></p>
+  <p>Últimos 30 días: $<span id="vMes">0</span></p>
+  <p>Total general: $<span id="vTotal">0</span></p>
 </div>
 
-<section id="ventas">
-  <h2>Totales</h2>
-  <p id="totalHoy"></p>
-  <p id="totalMes"></p>
-</section>
+<!-- GRAFICO -->
+<div class="card">
+  <h2>Gráfico de Ventas</h2>
+  <canvas id="chart"></canvas>
+</div>
 
-<section id="mozos" style="display:none">
-  <h2>Ventas por mozo</h2>
-  <div id="ventasMozos"></div>
-</section>
+<!-- FILTRO FECHAS -->
+<div class="card">
+  <h2>Historial por Fecha</h2>
+  <div>
+    <input type="date" id="fDesde">
+    <input type="date" id="fHasta">
+  </div>
+  <button onclick="filtrarRango()">Filtrar</button>
+  <button onclick="mostrarTodo()">Mostrar todo</button>
+  <button onclick="exportarCSV()">Exportar CSV</button>
+  <button onclick="borrarRango()">Borrar historial</button>
+</div>
 
-<section id="historial" style="display:none">
-  <h2>Historial</h2>
-  <input type="date" id="filtro">
-  <button onclick="filtrar()">Filtrar</button>
-  <button onclick="borrarHistorial()">Borrar historial</button>
-  <div id="lista"></div>
-</section>
+<!-- HISTORIAL -->
+<div class="card">
+  <h2>Historial de Mesas</h2>
+  <div id="historial"></div>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const firebaseConfig={/* tu config */};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "menu-pro-app.firebaseapp.com",
+  projectId: "menu-pro-app",
+  storageBucket: "menu-pro-app.firebasestorage.app",
+  messagingSenderId: "42917274964",
+  appId: "1:42917274964:web:13e161810ad195718994c1"
+};
 
-let cache=[];
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const click = document.getElementById("click");
 
-function sonido(){
-  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
-}
-
-window.apagarSonido=()=>{};
-
-/* HISTORIAL */
-onSnapshot(collection(db,"pedidos"),snap=>{
-  cache=[];
-  snap.forEach(d=>cache.push({...d.data(), id:d.id}));
-  mostrarLista(cache);
+/* SONIDO EN BOTONES */
+document.addEventListener("click", e=>{
+  if(e.target.tagName === "BUTTON"){
+    click.play();
+  }
 });
 
-function mostrarLista(list){
-  const l=document.getElementById("lista");
-  l.innerHTML="";
-
-  list.forEach(p=>{
-    const fecha=new Date(p.createdAt.seconds*1000);
-    l.innerHTML+=`
-    <div>
-      Mesa ${p.mesa}<br>
-      Mozo ${p.mozo}<br>
-      Cobró ${p.mozoCobro || "sin dato"}<br>
-      Total $${p.total}<br>
-      Nota ${p.nota || "sin nota"}<br>
-      Fecha ${fecha.toLocaleString()}
-    </div><hr>`;
-  });
-
-  // ventas por mozo
-  const por={};
-  cache.forEach(p=>por[p.mozo]=(por[p.mozo]||0)+p.total);
-
-  const vm=document.getElementById("ventasMozos");
-  vm.innerHTML="";
-  Object.keys(por).forEach(m=>{
-    vm.innerHTML+=`${m}: $${por[m]}<br>`;
-  });
-
-  // totales
-  const hoy=new Date().toDateString();
-  let th=0,tm=0;
-  cache.forEach(p=>{
-    const f=new Date(p.createdAt.seconds*1000).toDateString();
-    if(f===hoy) th+=p.total;
-    tm+=p.total;
-  });
-  document.getElementById("totalHoy").innerText="Hoy: $"+th;
-  document.getElementById("totalMes").innerText="Total: $"+tm;
+/* UTILIDADES DE TIEMPO */
+function getDateString(date){
+  return new Date(date).toLocaleDateString();
 }
 
-window.filtrar=()=>{
-  const f=document.getElementById("filtro").value;
-  if(!f) return;
-  const filtrados=cache.filter(p=>{
-    const fecha=new Date(p.createdAt.seconds*1000)
-      .toISOString().split("T")[0];
-    return fecha===f;
+/* VARIABLES DEL GRAFICO */
+let acumulados = [];
+let etiquetas = [];
+
+/* RESUMEN VENTAS */
+function resumenVentas(pedidos){
+  const hoy = new Date().toDateString();
+  let vHoy=0, ultimaSemana=0, ultimos30=0, total=0;
+
+  pedidos.forEach(p=>{
+    const estado = p.estado;
+    const fecha = new Date(p.createdAt.seconds*1000);
+
+    if(estado === "pagado" || estado === "entregado"){
+      total += p.total;
+
+      if(fecha.toDateString() === hoy) vHoy += p.total;
+
+      const diff = (new Date() - fecha) / (1000*60*60*24);
+      if(diff <= 7) ultimaSemana += p.total;
+      if(diff <= 30) ultimos30 += p.total;
+    }
   });
-  mostrarLista(filtrados);
+
+  document.getElementById("vHoy").innerText = vHoy;
+  document.getElementById("vSemana").innerText = ultimaSemana;
+  document.getElementById("vMes").innerText = ultimos30;
+  document.getElementById("vTotal").innerText = total;
+}
+
+/* HISTORIAL Y GRAFICO */
+function actualizarUI(pedidos){
+  const hist = document.getElementById("historial");
+  hist.innerHTML = "";
+  acumulados = []; etiquetas = [];
+
+  pedidos.forEach(p=>{
+    const fecha = new Date(p.createdAt.seconds*1000);
+    const fstr = getDateString(fecha);
+
+    hist.innerHTML += `
+    <div class="card">
+      <h3>Mesa ${p.mesa}</h3>
+      <p><strong>Mozo:</strong> ${p.mozo || "—"}</p>
+      <p><strong>Mozo Cobro:</strong> ${p.mozoCobro || "—"}</p>
+      <p><strong>Total:</strong> $${p.total}</p>
+      <p><strong>Estado:</strong> ${p.estado}</p>
+      <p><strong>Fecha:</strong> ${fecha.toLocaleString()}</p>
+      <p><strong>Items:</strong><br>
+        ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+      </p>
+    </div>`;
+
+    etiquetas.push(fstr);
+    acumulados.push(p.total);
+  });
+
+  new Chart(document.getElementById("chart").getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: etiquetas,
+      datasets:[{
+        label:'Ventas por pedido',
+        data: acumulados,
+        backgroundColor:'rgba(212,175,74,0.7)'
+      }]
+    }
+  });
+}
+
+/* LEER PEDIDOS */
+onSnapshot(collection(db,"pedidos"), snap=>{
+  const arr = [];
+  snap.forEach(d => arr.push(d.data()));
+
+  resumenVentas(arr);
+  actualizarUI(arr);
+});
+
+/* FILTRAR RANGO */
+window.filtrarRango = () => {
+  const desde = document.getElementById("fDesde").value;
+  const hasta = document.getElementById("fHasta").value;
+  if(!desde || !hasta) return alert("Colocá ambas fechas");
+
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    const arr = [];
+    snap.forEach(d => {
+      const p = d.data();
+      const date = new Date(p.createdAt.seconds*1000);
+      if(date>= new Date(desde) && date <= new Date(hasta)) arr.push(p);
+    });
+    actualizarUI(arr);
+  });
 };
 
-window.borrarHistorial=async()=>{
-  if(!confirm("Borrar historial?")) return;
-  cache.forEach(async p=>{
-    await deleteDoc(doc(db,"pedidos",p.id));
+window.mostrarTodo = () => {
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    const arr = [];
+    snap.forEach(d => arr.push(d.data()));
+    actualizarUI(arr);
   });
 };
 
-window.mostrar=id=>{
-  document.querySelectorAll("section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="block";
+/* EXPORTAR CSV */
+window.exportarCSV = () => {
+  let csv="Mesa,Mozo,MozoCobro,Total,Estado,Fecha,Items\n";
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(d=>{
+      const p = d.data();
+      const fecha = new Date(p.createdAt.seconds*1000).toLocaleString();
+      const items = (p.items||[]).map(i=>`${i.prod}-${i.precio}`).join("|");
+      csv+=`${p.mesa},${p.mozo},${p.mozoCobro||""},${p.total},${p.estado},${fecha},${items}\n`;
+    });
+
+    const blob = new Blob([csv],{type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download="ventas.csv"; a.click();
+  });
 };
+
+/* BORRAR HISTORIAL */
+window.borrarRango = async () => {
+  if(!confirm("Eliminar todo el historial?")) return;
+
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(d => deleteDoc(doc(db,"pedidos",d.id)));
+  });
+
+  document.getElementById("historial").innerHTML="";
+};
+
 </script>
 </body>
 </html>
