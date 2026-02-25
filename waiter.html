@@ -82,23 +82,10 @@ input, textarea{
   <button onclick="guardarMozo()">Guardar</button>
 </section>
 
-<!-- MENÚ -->
+<!-- MESAS PENDIENTES / CONFIRMACIÓN -->
 <section class="section">
-  <h2>Menú</h2>
-  <div id="tabsCategorias"></div>
-  <div id="productos"></div>
-</section>
-
-<!-- PEDIDO -->
-<section class="section card">
-  <h2>Pedido</h2>
-  <div id="carrito"></div>
-  <p>Total: $<span id="total">0</span></p>
-
-  <input id="mesa" placeholder="Número de mesa">
-  <textarea id="nota" placeholder="Nota para cocina"></textarea>
-
-  <button onclick="enviarPedido()">Enviar a cocina</button>
+  <h2>Pedidos pendientes</h2>
+  <div id="pendientes"></div>
 </section>
 
 <!-- MESAS ACTIVAS -->
@@ -130,28 +117,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let carrito = [];
-let total = 0;
-let categorias = [];
 let mozo = "";
 
 /* SONIDO */
 function sonido(){
   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
-}
-
-/* CLICK GLOBAL CON SONIDO */
-document.addEventListener("click", (e)=>{
-  if(e.target.tagName === "BUTTON"){
-    sonido();
-  }
-});
-
-/* VIBRACIÓN */
-function vibrar(){
-  if("vibrate" in navigator){
-    navigator.vibrate([200,100,200]);
-  }
 }
 
 /* NOTIFICACIÓN */
@@ -165,6 +135,20 @@ function notificar(mensaje){
   }
 }
 
+/* VIBRACIÓN */
+function vibrar(){
+  if("vibrate" in navigator){
+    navigator.vibrate([200,100,200]);
+  }
+}
+
+/* CLICK CON SONIDO */
+document.addEventListener("click", (e)=>{
+  if(e.target.tagName === "BUTTON"){
+    sonido();
+  }
+});
+
 /* GUARDAR MOZO */
 window.guardarMozo = () => {
   const n = document.getElementById("mozoNombre").value;
@@ -173,125 +157,41 @@ window.guardarMozo = () => {
   alert("Mozo: " + mozo);
 };
 
-/* CATEGORÍAS */
-function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"), snap=>{
-    categorias = [];
-    snap.forEach(d => categorias.push(d.data().nombre));
-    renderTabs();
-  });
-}
-
-function renderTabs(){
-  const tabs = document.getElementById("tabsCategorias");
-  tabs.innerHTML = "";
-  categorias.forEach(cat=>{
-    tabs.innerHTML += `<button onclick="mostrarCat('${cat}')">${cat}</button>`;
-  });
-}
-
-/* PRODUCTOS */
-window.mostrarCat = (cat) => {
-  const prod = document.getElementById("productos");
-  prod.innerHTML = "";
-
-  onSnapshot(collection(db,"productos"), snap=>{
-    prod.innerHTML = "";
-    snap.forEach(d=>{
-      const p = d.data();
-      if(p.categoria === cat){
-        prod.innerHTML += `
-        <div class="card">
-          <h3>${p.nombre}</h3>
-          <p>$${p.precio}</p>
-          <button onclick="agregar('${p.nombre}',${p.precio})">
-            Agregar
-          </button>
-        </div>`;
-      }
-    });
-  });
-};
-
-/* CARRITO */
-window.agregar = (prod, precio) => {
-  carrito.push({prod, precio});
-  total += precio;
-  renderCarrito();
-};
-
-function renderCarrito(){
-  const c = document.getElementById("carrito");
-  c.innerHTML = "";
-  carrito.forEach((it, idx)=>{
-    c.innerHTML += `
-    <div class="card">
-      ${it.prod} - $${it.precio}
-      <button onclick="quitar(${idx})">X</button>
-    </div>`;
-  });
-  document.getElementById("total").innerText = total;
-}
-
-window.quitar = (i) => {
-  total -= carrito[i].precio;
-  carrito.splice(i,1);
-  renderCarrito();
-};
-
-/* ENVIAR PEDIDO */
-window.enviarPedido = async () => {
-  const mesa = document.getElementById("mesa").value;
-  const nota = document.getElementById("nota").value;
-
-  if(!mesa) return alert("Ingrese mesa");
-  if(!mozo) return alert("Ingrese nombre del mozo");
-
-  await addDoc(collection(db,"pedidos"),{
-    items: carrito,
-    total,
-    mesa,
-    mozo,
-    nota,
-    estado: "pendiente",
-    createdAt: new Date(),
-    creadoPor: "mozo"
-  });
-
-  carrito = [];
-  total = 0;
-  renderCarrito();
-  document.getElementById("nota").value = "";
-
-  document.body.style.background = "#2ecc71";
-  document.body.innerHTML = "<h1 style='text-align:center; color:white;'>Pedido enviado ✔</h1>";
-
-  setTimeout(()=>location.reload(),2000);
-};
-
-/* MESAS ACTIVAS */
+/* PEDIDOS PENDIENTES (confirmación) */
 onSnapshot(collection(db,"pedidos"), snap=>{
+  const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
+
+  pend.innerHTML = "";
   cont.innerHTML = "";
 
   snap.forEach(d=>{
     const data = d.data();
 
-    if(data.estado === "listo"){
-      notificar("Pedido listo para mesa " + data.mesa);
-      vibrar();
+    // PEDIDOS QUE LLEGAN DEL CLIENTE
+    if(data.estado === "pendiente_mozo"){
+      pend.innerHTML += `
+      <div class="card">
+        <h3>Mesa: ${data.mesa || "sin mesa"}</h3>
+        <p>Total: $${data.total}</p>
+        <p>Nota: ${data.nota || "sin nota"}</p>
+
+        <input id="mesa-${d.id}" placeholder="Asignar mesa">
+        <button onclick="confirmar('${d.id}')">Confirmar pedido</button>
+      </div>`;
     }
 
+    // MESAS ACTIVAS (no pagadas)
     if(data.estado !== "pagado"){
       cont.innerHTML += `
       <div class="card">
         <h3>Mesa ${data.mesa}</h3>
         <p><strong>Estado:</strong> ${data.estado}</p>
         <p><strong>Total:</strong> $${data.total}</p>
-        <p><strong>Nota:</strong> ${data.nota||"sin nota"}</p>
         <p><strong>Items:</strong><br>
           ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
+
         <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
         <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
         <button onclick="entregar('${d.id}')">✔ Entregar</button>
@@ -299,6 +199,19 @@ onSnapshot(collection(db,"pedidos"), snap=>{
     }
   });
 });
+
+/* CONFIRMAR PEDIDO Y PASAR A COCINA */
+window.confirmar = async (id) => {
+  const m = document.getElementById(`mesa-${id}`).value;
+
+  await updateDoc(doc(db,"pedidos",id),{
+    estado: "en_cocina",
+    mesa: m || ""
+  });
+
+  notificar("Pedido confirmado y enviado a cocina");
+  vibrar();
+};
 
 /* COBRAR */
 window.cobrar = async (id) => {
@@ -323,7 +236,6 @@ window.entregar = async (id) => {
   vibrar();
 };
 
-cargarCategorias();
 </script>
 </body>
-</html> 
+</html>
