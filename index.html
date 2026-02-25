@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tutto Sistema</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#050505">
-
 <style>
 body{
   margin:0;
@@ -89,7 +86,12 @@ h2,h3{
 
   <div class="tabs" id="tabsCategorias"></div>
 
-  <div id="productos"></div>
+  <!-- PRODUCTOS CON SCROLL INTERNO -->
+  <div id="productos" style="
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 6px;
+  "></div>
 </section>
 
 <!-- ADMIN -->
