@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mozo</title>
+
 <style>
 body{
   background:#050505;
@@ -21,14 +22,14 @@ header{
 }
 
 h1,h2,h3{
-  font-size:26px;
+  font-size:24px;
 }
 
 .card{
   background:#101010;
-  padding:18px;
-  border-radius:16px;
-  margin-bottom:16px;
+  padding:16px;
+  border-radius:14px;
+  margin-bottom:14px;
   border:1px solid #222;
   font-size:18px;
 }
@@ -42,7 +43,6 @@ button{
   color:black;
   font-weight:bold;
   margin-top:8px;
-  cursor:pointer;
 }
 
 input, textarea{
@@ -65,27 +65,31 @@ input, textarea{
   <h1>Panel Mozo</h1>
 </header>
 
+<!-- nombre mozo -->
 <div class="card">
   <h3>Nombre del mozo</h3>
   <input id="mozoNombre">
   <button onclick="guardarMozo()">Guardar</button>
 </div>
 
-<h2>Menú (como cliente)</h2>
+<!-- menú (igual que cliente) -->
+<h2>Menú</h2>
 <div id="tabsCategorias" class="card"></div>
 <div id="productos"></div>
 
+<!-- pedido -->
 <div class="card">
   <h3>Pedido</h3>
   <div id="carrito"></div>
   <p>Total: $<span id="total">0</span></p>
 
   <input id="mesa" placeholder="Número de mesa">
-  <textarea id="nota" placeholder="Nota para cocina"></textarea>
+  <textarea id="nota" placeholder="Nota para cocina (opcional)"></textarea>
 
   <button onclick="enviarPedido()">Enviar a Cocina</button>
 </div>
 
+<!-- mesas pendientes -->
 <h2>Mesas pendientes</h2>
 <div id="mesas"></div>
 
@@ -102,19 +106,19 @@ let total=0;
 let categorias=[];
 let mozo="";
 
-/* SONIDO */
+/* sonido */
 function sonido(){
   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 
-/* VIBRACIÓN */
+/* vibración */
 function vibrar(){
   if("vibrate" in navigator){
     navigator.vibrate([200,100,200]);
   }
 }
 
-/* GUARDAR MOZO */
+/* guardar mozo */
 window.guardarMozo=()=>{
   const n=document.getElementById("mozoNombre").value;
   if(!n) return;
@@ -122,7 +126,7 @@ window.guardarMozo=()=>{
   alert("Mozo: "+mozo);
 };
 
-/* CATEGORÍAS (menú igual que cliente) */
+/* categorías (menu) */
 function cargarCategorias(){
   onSnapshot(collection(db,"categorias"),snap=>{
     categorias=[];
@@ -139,17 +143,17 @@ function renderTabs(){
   });
 }
 
-/* PRODUCTOS */
+/* productos */
 window.mostrarCat=(cat)=>{
-  const prodDiv=document.getElementById("productos");
-  prodDiv.innerHTML="";
+  const prod=document.getElementById("productos");
+  prod.innerHTML="";
 
   onSnapshot(collection(db,"productos"),snap=>{
-    prodDiv.innerHTML="";
+    prod.innerHTML="";
     snap.forEach(d=>{
       const p=d.data();
       if(p.categoria===cat){
-        prodDiv.innerHTML+=`
+        prod.innerHTML+=`
         <div class="card">
           <h3>${p.nombre}</h3>
           <p>$${p.precio}</p>
@@ -162,7 +166,7 @@ window.mostrarCat=(cat)=>{
   });
 };
 
-/* CARRITO */
+/* carrito */
 window.agregar=(prod,precio)=>{
   carrito.push({prod,precio});
   total+=precio;
@@ -190,7 +194,7 @@ window.quitar=(i)=>{
   sonido();
 };
 
-/* ENVIAR PEDIDO */
+/* enviar pedido */
 window.enviarPedido=async()=>{
   const mesa=document.getElementById("mesa").value;
   const nota=document.getElementById("nota").value;
@@ -221,7 +225,7 @@ window.enviarPedido=async()=>{
   sonido();
 };
 
-/* MESAS PENDIENTES */
+/* mesas pendientes */
 onSnapshot(collection(db,"pedidos"),snap=>{
   const cont=document.getElementById("mesas");
   cont.innerHTML="";
@@ -249,7 +253,7 @@ onSnapshot(collection(db,"pedidos"),snap=>{
   });
 });
 
-/* COBRAR */
+/* cobrar */
 window.cobrar=async(id)=>{
   const mozoCobro=document.getElementById(`cobro-${id}`).value;
   if(!mozoCobro) return alert("Ingrese mozo que cobra");
@@ -265,5 +269,6 @@ window.cobrar=async(id)=>{
 
 cargarCategorias();
 </script>
+
 </body>
 </html>
