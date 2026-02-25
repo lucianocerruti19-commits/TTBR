@@ -67,22 +67,13 @@ canvas{width:100%; max-width:500px;}
   <canvas id="chart"></canvas>
 </div>
 
-<!-- FILTRO FECHAS -->
-<div class="card">
-  <h2>Historial por Fecha</h2>
-  <div>
-    <input type="date" id="fDesde">
-    <input type="date" id="fHasta">
-  </div>
-  <button onclick="filtrarRango()">Filtrar</button>
-  <button onclick="mostrarTodo()">Mostrar todo</button>
-  <button onclick="exportarCSV()">Exportar CSV</button>
-  <button onclick="borrarRango()">Borrar historial</button>
-</div>
-
 <!-- HISTORIAL -->
 <div class="card">
-  <h2>Historial de Mesas</h2>
+  <h2>Historial</h2>
+  <button onclick="mostrarActivos()">Ver activos</button>
+  <button onclick="mostrarArchivados()">Ver archivados</button>
+  <button onclick="archivarHoy()">Archivar historial de hoy</button>
+
   <div id="historial"></div>
 </div>
 
@@ -93,7 +84,7 @@ import {
   getFirestore,
   collection,
   onSnapshot,
-  deleteDoc,
+  updateDoc,
   doc
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
@@ -103,7 +94,7 @@ const firebaseConfig = {
   projectId: "menu-pro-app",
   storageBucket: "menu-pro-app.firebasestorage.app",
   messagingSenderId: "42917274964",
-  appId: "1:42917274964:web:13e161810ad195718994c1"
+  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -117,144 +108,120 @@ document.addEventListener("click", e=>{
   }
 });
 
-/* UTILIDADES DE TIEMPO */
-function getDateString(date){
-  return new Date(date).toLocaleDateString();
-}
+/* VENTAS */
+onSnapshot(collection(db,"pedidos"), snap=>{
+  let hoyTotal = 0;
+  let semana = 0;
+  let mes = 0;
 
-/* VARIABLES DEL GRAFICO */
-let acumulados = [];
-let etiquetas = [];
-
-/* RESUMEN VENTAS */
-function resumenVentas(pedidos){
   const hoy = new Date().toDateString();
-  let vHoy=0, ultimaSemana=0, ultimos30=0, total=0;
 
-  pedidos.forEach(p=>{
-    const estado = p.estado;
-    const fecha = new Date(p.createdAt.seconds*1000);
+  snap.forEach(d=>{
+    const p = d.data();
+    if(p.estado === "pagado" || p.estado === "entregado"){
 
-    if(estado === "pagado" || estado === "entregado"){
-      total += p.total;
+      const fecha = new Date(p.createdAt.seconds*1000);
+      const fstr = fecha.toDateString();
 
-      if(fecha.toDateString() === hoy) vHoy += p.total;
+      if(fstr === hoy) hoyTotal += p.total;
 
       const diff = (new Date() - fecha) / (1000*60*60*24);
-      if(diff <= 7) ultimaSemana += p.total;
-      if(diff <= 30) ultimos30 += p.total;
+      if(diff <= 7) semana += p.total;
+      if(diff <= 30) mes += p.total;
     }
   });
 
-  document.getElementById("vHoy").innerText = vHoy;
-  document.getElementById("vSemana").innerText = ultimaSemana;
-  document.getElementById("vMes").innerText = ultimos30;
-  document.getElementById("vTotal").innerText = total;
-}
-
-/* HISTORIAL Y GRAFICO */
-function actualizarUI(pedidos){
-  const hist = document.getElementById("historial");
-  hist.innerHTML = "";
-  acumulados = []; etiquetas = [];
-
-  pedidos.forEach(p=>{
-    const fecha = new Date(p.createdAt.seconds*1000);
-    const fstr = getDateString(fecha);
-
-    hist.innerHTML += `
-    <div class="card">
-      <h3>Mesa ${p.mesa}</h3>
-      <p><strong>Mozo:</strong> ${p.mozo || "—"}</p>
-      <p><strong>Mozo Cobro:</strong> ${p.mozoCobro || "—"}</p>
-      <p><strong>Total:</strong> $${p.total}</p>
-      <p><strong>Estado:</strong> ${p.estado}</p>
-      <p><strong>Fecha:</strong> ${fecha.toLocaleString()}</p>
-      <p><strong>Items:</strong><br>
-        ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
-      </p>
-    </div>`;
-
-    etiquetas.push(fstr);
-    acumulados.push(p.total);
-  });
-
-  new Chart(document.getElementById("chart").getContext('2d'), {
-    type:'bar',
-    data:{
-      labels: etiquetas,
-      datasets:[{
-        label:'Ventas por pedido',
-        data: acumulados,
-        backgroundColor:'rgba(212,175,74,0.7)'
-      }]
-    }
-  });
-}
-
-/* LEER PEDIDOS */
-onSnapshot(collection(db,"pedidos"), snap=>{
-  const arr = [];
-  snap.forEach(d => arr.push(d.data()));
-
-  resumenVentas(arr);
-  actualizarUI(arr);
+  document.getElementById("vHoy").innerText = hoyTotal;
+  document.getElementById("vSemana").innerText = semana;
+  document.getElementById("vMes").innerText = mes;
 });
 
-/* FILTRAR RANGO */
-window.filtrarRango = () => {
-  const desde = document.getElementById("fDesde").value;
-  const hasta = document.getElementById("fHasta").value;
-  if(!desde || !hasta) return alert("Colocá ambas fechas");
-
+/* HISTORIAL ACTIVO */
+function cargarHistorial(filtro = null, soloArchivados = false){
   onSnapshot(collection(db,"pedidos"), snap=>{
-    const arr = [];
-    snap.forEach(d => {
-      const p = d.data();
-      const date = new Date(p.createdAt.seconds*1000);
-      if(date>= new Date(desde) && date <= new Date(hasta)) arr.push(p);
-    });
-    actualizarUI(arr);
-  });
-};
+    const h = document.getElementById("historial");
+    h.innerHTML = "";
 
-window.mostrarTodo = () => {
-  onSnapshot(collection(db,"pedidos"), snap=>{
-    const arr = [];
-    snap.forEach(d => arr.push(d.data()));
-    actualizarUI(arr);
-  });
-};
-
-/* EXPORTAR CSV */
-window.exportarCSV = () => {
-  let csv="Mesa,Mozo,MozoCobro,Total,Estado,Fecha,Items\n";
-  onSnapshot(collection(db,"pedidos"), snap=>{
     snap.forEach(d=>{
       const p = d.data();
-      const fecha = new Date(p.createdAt.seconds*1000).toLocaleString();
-      const items = (p.items||[]).map(i=>`${i.prod}-${i.precio}`).join("|");
-      csv+=`${p.mesa},${p.mozo},${p.mozoCobro||""},${p.total},${p.estado},${fecha},${items}\n`;
+      const fecha = new Date(p.createdAt.seconds*1000);
+
+      if(soloArchivados && !p.archivado) return;
+      if(!soloArchivados && p.archivado) return;
+
+      if(filtro && fecha.toDateString() !== filtro) return;
+
+      h.innerHTML += `
+      <div class="card">
+        <h3>Mesa ${p.mesa}</h3>
+        <p><strong>Mozo:</strong> ${p.mozo || "—"}</p>
+        <p><strong>Mozo Cobro:</strong> ${p.mozoCobro || "—"}</p>
+        <p><strong>Total:</strong> $${p.total}</p>
+        <p><strong>Estado:</strong> ${p.estado}</p>
+        <p><strong>Fecha:</strong> ${fecha.toLocaleString()}</p>
+        <p><strong>Items:</strong><br>
+          ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+        </p>
+      </div>`;
     });
-
-    const blob = new Blob([csv],{type:"text/csv"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download="ventas.csv"; a.click();
   });
-};
+}
 
-/* BORRAR HISTORIAL */
-window.borrarRango = async () => {
-  if(!confirm("Eliminar todo el historial?")) return;
+/* VER ACTIVOS */
+window.mostrarActivos = () => cargarHistorial(null,false);
+
+/* VER ARCHIVADOS */
+window.mostrarArchivados = () => cargarHistorial(null,true);
+
+/* ARCHIVAR HISTORIAL DEL DÍA */
+window.archivarHoy = () => {
+  if(!confirm("Archivar historial de hoy?")) return;
+
+  const hoy = new Date().toDateString();
 
   onSnapshot(collection(db,"pedidos"), snap=>{
-    snap.forEach(d => deleteDoc(doc(db,"pedidos",d.id)));
+    snap.forEach(async d=>{
+      const p = d.data();
+      const fecha = new Date(p.createdAt.seconds*1000);
+
+      if(fecha.toDateString() === hoy){
+        await updateDoc(doc(db,"pedidos", d.id),{
+          archivado: true
+        });
+      }
+    });
   });
 
-  document.getElementById("historial").innerHTML="";
+  document.getElementById("historial").innerHTML = "";
+  alert("Historial del día archivado ✔");
 };
 
+/* GRAFICO */
+let chart;
+function actualizarGrafico(valor){
+  const ctx=document.getElementById("chart").getContext("2d");
+  if(chart) chart.destroy();
+  chart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:['Hoy'],datasets:[{label:'Ventas',data:[valor]}]}
+  });
+}
+
+onSnapshot(collection(db,"pedidos"), snap=>{
+  let hoyTotal=0;
+  snap.forEach(d=>{
+    const p = d.data();
+    if((p.estado==="pagado"||p.estado==="entregado")){
+      const fecha=new Date(p.createdAt.seconds*1000);
+      if(fecha.toDateString()===new Date().toDateString()){
+        hoyTotal+=p.total;
+      }
+    }
+  });
+  actualizarGrafico(hoyTotal);
+});
+
+cargarHistorial();
 </script>
 </body>
 </html>
