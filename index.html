@@ -2,41 +2,76 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>TOTOBAR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tutto Sistema</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#050505">
+
 <style>
 body{
   margin:0;
   background:#050505;
   color:#f5d28a;
-  font-family:Arial;
+  font-family:'Arial', sans-serif;
 }
+
 header{
   text-align:center;
-  padding:24px;
+  padding:28px 10px;
   background:#0b0b0b;
   border-bottom:3px solid #d4af37;
+  box-shadow:0 6px 14px rgba(0,0,0,0.8);
 }
-.section{display:none; padding:20px;}
+
+.logo-banner{
+  width:240px;
+  display:block;
+  margin:0 auto;
+}
+
+.section{
+  display:none;
+  padding:20px;
+}
+
 button{
-  padding:14px 18px;
+  padding:12px 18px;
   border:none;
-  border-radius:12px;
-  background:linear-gradient(135deg,#d4af37,#9b7208);
-  color:black;
+  border-radius:14px;
+  background:linear-gradient(135deg, #d4af37, #9b7208);
+  color:#000;
   font-weight:bold;
   margin:6px;
+  cursor:pointer;
+  box-shadow:0 4px 8px rgba(0,0,0,0.6);
+}
+
+.card{
+  background:#101010;
+  padding:16px;
+  border-radius:14px;
+  margin-bottom:14px;
+  border:1px solid #222;
+  box-shadow:0 4px 10px rgba(0,0,0,0.7);
+}
+
+h2,h3{
+  margin:0 0 12px 0;
+  color:#f5d28a;
 }
 </style>
 </head>
 <body>
 
-<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-
 <header>
-  <h2>TOTOBAR</h2>
+  <img src="logo.png" class="logo-banner">
+  <h2>Tutto Sistema</h2>
 </header>
 
-<!-- MENU -->
+<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<!-- MENU PRINCIPAL -->
 <section id="menu" class="section" style="display:block">
   <h3>Seleccionar rol</h3>
   <button onclick="mostrar('cliente')">Cliente (visual)</button>
@@ -54,22 +89,25 @@ button{
   <div id="productos"></div>
 </section>
 
-<!-- IFRAEMES -->
+<!-- ADMIN -->
 <section id="admin" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="admin.html" style="width:100%; height:80vh; border:none;"></iframe>
 </section>
 
+<!-- COCINA -->
 <section id="cocina" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="cocina.html" style="width:100%; height:80vh; border:none;"></iframe>
 </section>
 
+<!-- MOZO -->
 <section id="mozo" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="mozo.html" style="width:100%; height:80vh; border:none;"></iframe>
 </section>
 
+<!-- DUEÑO -->
 <section id="dueno" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="dueno.html" style="width:100%; height:80vh; border:none;"></iframe>
@@ -79,19 +117,20 @@ button{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const firebaseConfig={
+const firebaseConfig = {
  apiKey:"TU_API_KEY",
  authDomain:"menu-pro-app.firebaseapp.com",
  projectId:"menu-pro-app",
  storageBucket:"menu-pro-app.firebasestorage.app",
  messagingSenderId:"42917274964",
- appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
+ appId:"1:42917274964:web:13e161810ad195718994c1"
 };
 
-const db=getFirestore(initializeApp(firebaseConfig));
+initializeApp(firebaseConfig);
+const db = getFirestore();
 
-/* SONIDO */
-document.addEventListener("click",e=>{
+/* SONIDO EN BOTONES */
+document.addEventListener("click", e=>{
  if(e.target.tagName==="BUTTON"){
   document.getElementById("click").play();
  }
@@ -141,5 +180,6 @@ onSnapshot(collection(db,"productos"),snap=>{
  });
 });
 </script>
+
 </body>
 </html>
