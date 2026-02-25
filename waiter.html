@@ -1,15 +1,38 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mozo</title>
 
 <style>
-body{background:#000;color:#d4af37;font-family:Arial;padding:10px}
-.card{background:#0c0c0c;border:1px solid rgba(212,175,55,0.4);padding:15px;border-radius:14px;margin-bottom:15px}
-button{width:100%;padding:10px;border:none;border-radius:8px;background:#d4af37;font-weight:bold}
-@media print{button{display:none}}
+body{
+  background:#000;
+  color:#d4af37;
+  font-family:Arial;
+  padding:10px;
+}
+
+.card{
+  background:#0c0c0c;
+  border:1px solid rgba(212,175,55,0.4);
+  padding:15px;
+  border-radius:14px;
+  margin-bottom:15px;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#d4af37;
+  font-weight:bold;
+}
+
+@media print{
+  button{display:none}
+}
 </style>
 </head>
 <body>
@@ -27,7 +50,7 @@ authDomain:"menu-pro-app.firebaseapp.com",
 projectId:"menu-pro-app",
 storageBucket:"menu-pro-app.firebasestorage.app",
 messagingSenderId:"42917274964",
-appId:"1:42917274964:web:13e161810ad195718994c1"
+appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 const app=initializeApp(firebaseConfig);
@@ -35,25 +58,30 @@ const db=getFirestore(app);
 const contenedor=document.getElementById("pedidos");
 
 onSnapshot(collection(db,"pedidos"),snap=>{
-contenedor.innerHTML="";
-snap.forEach(d=>{
-const data=d.data();
-if(data.estado==="listo"){
-contenedor.innerHTML+=`
-<div class="card">
-<h3>Mesa ${data.mesa}</h3>
-<p>${data.producto}</p>
-<p>$${data.precio}</p>
-<button onclick="entregar('${d.id}')">ENTREGADO</button>
-</div>`;
-}
-});
+  contenedor.innerHTML="";
+  snap.forEach(d=>{
+    const data=d.data();
+    if(data.estado==="listo"){
+      contenedor.innerHTML+=`
+      <div class="card">
+        <h3>Mesa ${data.mesa}</h3>
+        <p><strong>Total:</strong> $${data.total}</p>
+        <p><strong>Items:</strong><br>
+          ${data.items.map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+        </p>
+        <button onclick="entregar('${d.id}')">ENTREGADO</button>
+      </div>`;
+    }
+  });
 });
 
 window.entregar=async(id)=>{
-if(confirm("¿Imprimir ticket?")) window.print();
-await updateDoc(doc(db,"pedidos",id),{estado:"entregado"});
-}
+  if(confirm("¿Imprimir ticket?")) window.print();
+
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"entregado"
+  });
+};
 </script>
 
 </body>
