@@ -13,36 +13,21 @@ body{
   padding:14px;
 }
 
-h1{text-align:center;}
-
 .card{
   background:#101010;
-  padding:18px;
-  border-radius:16px;
-  margin-bottom:18px;
   border:1px solid #2b2b2b;
+  padding:16px;
+  border-radius:16px;
+  margin-bottom:16px;
 }
 
 button{
-  padding:12px 16px;
+  padding:12px;
   border:none;
   border-radius:12px;
   background:linear-gradient(145deg, #d8b14a, #b58c2f);
   color:black;
   font-weight:bold;
-  box-shadow:0 4px 10px rgba(216,177,74,0.5);
-  margin-top:8px;
-}
-
-input, select{
-  padding:12px;
-  border-radius:10px;
-  border:1px solid #2b2b2b;
-  background:#111;
-  color:white;
-  width:100%;
-  box-sizing:border-box;
-  margin-top:6px;
 }
 </style>
 </head>
@@ -50,30 +35,13 @@ input, select{
 
 <h1>Panel Admin</h1>
 
-<!-- PRODUCTOS -->
-<div class="card">
-  <h2>Agregar producto</h2>
-  <input id="prodNombre" placeholder="Producto">
-  <input id="prodPrecio" placeholder="Precio">
-  <select id="prodCategoria"></select>
-  <button onclick="agregarProducto()">Agregar</button>
-</div>
+<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
-<!-- LISTA PRODUCTOS -->
-<div class="card">
-  <h2>Productos</h2>
-  <div id="listaProductos"></div>
-</div>
-
-<!-- PEDIDOS -->
-<div class="card">
-  <h2>Pedidos / Mesas</h2>
-  <div id="pedidos"></div>
-</div>
+<div id="pedidos"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
@@ -81,91 +49,19 @@ const firebaseConfig = {
   projectId: "menu-pro-app",
   storageBucket: "menu-pro-app.firebasestorage.app",
   messagingSenderId: "42917274964",
-  appId: "1:42917274964:web:13e161810ad195718994c1"
+  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const click = document.getElementById("click");
 
-let categorias = [];
-
-/* SONIDO */
-function sonido(){
-  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
-}
-
-/* CLICK CON SONIDO */
-document.addEventListener("click", (e)=>{
-  if(e.target.tagName === "BUTTON"){
-    sonido();
-  }
+/* SONIDO EN BOTONES */
+document.addEventListener("click", e=>{
+  if(e.target.tagName === "BUTTON") click.play();
 });
 
-/* CATEGORÍAS */
-function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"), snap=>{
-    categorias = [];
-    snap.forEach(d => categorias.push(d.data().nombre));
-    renderSelect();
-  });
-}
-
-function renderSelect(){
-  const select = document.getElementById("prodCategoria");
-  select.innerHTML = "";
-  categorias.forEach(cat=>{
-    select.innerHTML += `<option value="${cat}">${cat}</option>`;
-  });
-}
-
-/* AGREGAR PRODUCTO */
-window.agregarProducto = async () => {
-  const nombre = document.getElementById("prodNombre").value;
-  const precio = document.getElementById("prodPrecio").value;
-  const categoria = document.getElementById("prodCategoria").value;
-
-  if(!nombre || !precio) return;
-
-  await addDoc(collection(db,"productos"),{
-    nombre,
-    precio,
-    categoria
-  });
-
-  document.getElementById("prodNombre").value = "";
-  document.getElementById("prodPrecio").value = "";
-};
-
-/* LISTA PRODUCTOS */
-onSnapshot(collection(db,"productos"), snap=>{
-  const lista = document.getElementById("listaProductos");
-  lista.innerHTML = "";
-
-  snap.forEach(d=>{
-    const p = d.data();
-    lista.innerHTML += `
-    <div class="card">
-      ${p.nombre} - $${p.precio}<br>
-      <strong>${p.categoria}</strong>
-      <button onclick="editar('${d.id}')">Editar</button>
-      <button onclick="borrarProducto('${d.id}')">Borrar</button>
-    </div>`;
-  });
-});
-
-/* EDITAR */
-window.editar = async (id) => {
-  const nuevo = prompt("Nuevo precio");
-  if(!nuevo) return;
-  await updateDoc(doc(db,"productos",id),{precio:nuevo});
-};
-
-/* BORRAR PRODUCTO */
-window.borrarProducto = async (id) => {
-  await deleteDoc(doc(db,"productos",id));
-};
-
-/* PEDIDOS CON DETALLE */
+/* PEDIDOS DETALLE */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const cont = document.getElementById("pedidos");
   cont.innerHTML = "";
@@ -184,18 +80,16 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       <p><strong>Items:</strong><br>
         ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
       </p>
-      <button onclick="eliminarPedido('${d.id}')">Eliminar</button>
+      <button onclick="eliminar('${d.id}')">Eliminar</button>
     </div>`;
   });
 });
 
-/* ELIMINAR PEDIDO */
-window.eliminarPedido = async (id) => {
-  if(!confirm("Eliminar pedido?")) return;
+/* ELIMINAR */
+window.eliminar = async (id) => {
+  if(!confirm("Eliminar?")) return;
   await deleteDoc(doc(db,"pedidos",id));
 };
-
-cargarCategorias();
 </script>
 </body>
 </html>
