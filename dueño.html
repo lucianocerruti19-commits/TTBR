@@ -1,13 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dueño - Toto Bar</title>
+<title>Dueño</title>
 
 <style>
-body{background:#000;color:#d4af37;font-family:Arial;padding:15px}
-.card{background:#0c0c0c;border:1px solid rgba(212,175,55,0.4);padding:15px;border-radius:14px;margin-bottom:15px}
+body{
+  background:#000;
+  color:#d4af37;
+  font-family:Arial;
+  padding:15px;
+}
+
+.card{
+  background:#0c0c0c;
+  border:1px solid rgba(212,175,55,0.4);
+  padding:15px;
+  border-radius:14px;
+  margin-bottom:15px;
+}
+
+button{
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#d4af37;
+  font-weight:bold;
+}
+
+input{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #222;
+  background:#111;
+  color:white;
+  width:100%;
+}
 </style>
 </head>
 <body>
@@ -15,23 +44,37 @@ body{background:#000;color:#d4af37;font-family:Arial;padding:15px}
 <h1>Panel Dueño</h1>
 
 <div class="card">
-<h2>Total General</h2>
-<p id="totalGeneral">$0</p>
+  <h2>Filtrar por fecha</h2>
+  <input type="date" id="fechaFiltro">
+  <button onclick="filtrar()">Filtrar</button>
+  <button onclick="cargar()">Ver todo</button>
 </div>
 
 <div class="card">
-<h2>Ventas Hoy</h2>
-<p id="ventasHoy">$0</p>
+  <h2>Total General</h2>
+  <p id="totalGeneral">$0</p>
 </div>
 
 <div class="card">
-<h2>Pedidos Hoy</h2>
-<p id="pedidosHoy">0</p>
+  <h2>Ventas Hoy</h2>
+  <p id="ventasHoy">$0</p>
 </div>
+
+<div class="card">
+  <h2>Pedidos Hoy</h2>
+  <p id="pedidosHoy">0</p>
+</div>
+
+<div class="card">
+  <h2>Historial</h2>
+  <div id="historial"></div>
+</div>
+
+<button onclick="exportar()">Exportar Excel</button>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
@@ -39,36 +82,99 @@ authDomain:"menu-pro-app.firebaseapp.com",
 projectId:"menu-pro-app",
 storageBucket:"menu-pro-app.firebasestorage.app",
 messagingSenderId:"42917274964",
-appId:"1:42917274964:web:13e161810ad195718994c1"
+appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
+let pedidosCache=[];
+
+/* CARGAR ESTADISTICAS */
 onSnapshot(collection(db,"pedidos"),snap=>{
-let totalGeneral=0;
-let ventasHoy=0;
-let pedidosHoy=0;
+  pedidosCache=[];
+  let totalGeneral=0;
+  let ventasHoy=0;
+  let pedidosHoy=0;
 
-const hoy=new Date().toDateString();
+  const hoy=new Date().toDateString();
 
-snap.forEach(doc=>{
-const d=doc.data();
-if(d.estado==="entregado"){
-totalGeneral+=d.total;
+  snap.forEach(doc=>{
+    const d=doc.data();
+    pedidosCache.push({...d});
 
-const fechaPedido=new Date(d.fecha.seconds*1000).toDateString();
-if(fechaPedido===hoy){
-ventasHoy+=d.total;
-pedidosHoy++;
-}
-}
+    if(d.estado==="entregado"){
+      totalGeneral+=d.total;
+
+      const fecha=new Date(d.createdAt.seconds*1000).toDateString();
+      if(fecha===hoy){
+        ventasHoy+=d.total;
+        pedidosHoy++;
+      }
+    }
+  });
+
+  document.getElementById("totalGeneral").innerText="$"+totalGeneral;
+  document.getElementById("ventasHoy").innerText="$"+ventasHoy;
+  document.getElementById("pedidosHoy").innerText=pedidosHoy;
+
+  mostrarHistorial(pedidosCache);
 });
 
-document.getElementById("totalGeneral").innerText="$"+totalGeneral;
-document.getElementById("ventasHoy").innerText="$"+ventasHoy;
-document.getElementById("pedidosHoy").innerText=pedidosHoy;
-});
+/* HISTORIAL */
+function mostrarHistorial(list){
+  const h=document.getElementById("historial");
+  h.innerHTML="";
+
+  list.forEach(p=>{
+    const fecha=new Date(p.createdAt.seconds*1000);
+
+    h.innerHTML+=`
+    <div class="card">
+      <strong>Mesa:</strong> ${p.mesa || "-"}<br>
+      <strong>Total:</strong> $${p.total}<br>
+      <strong>Estado:</strong> ${p.estado}<br>
+      <strong>Fecha:</strong> ${fecha.toLocaleString()}<br>
+      <strong>Items:</strong><br>
+      ${p.items.map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+    </div>`;
+  });
+}
+
+/* FILTRO */
+window.filtrar=()=>{
+  const f=document.getElementById("fechaFiltro").value;
+  if(!f) return;
+
+  const filtrados=pedidosCache.filter(p=>{
+    const fecha=new Date(p.createdAt.seconds*1000).toISOString().split("T")[0];
+    return fecha===f;
+  });
+
+  mostrarHistorial(filtrados);
+};
+
+window.cargar=()=>{
+  mostrarHistorial(pedidosCache);
+};
+
+/* EXPORT EXCEL */
+window.exportar=()=>{
+  let csv="mesa,total,fecha,estado\n";
+
+  pedidosCache.forEach(p=>{
+    const fecha=new Date(p.createdAt.seconds*1000);
+    csv+=`${p.mesa||"-"},${p.total},${fecha.toLocaleString()},${p.estado}\n`;
+  });
+
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="ventas.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};
 </script>
 
 </body>
