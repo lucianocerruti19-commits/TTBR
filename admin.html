@@ -32,7 +32,6 @@ button{
   font-weight:bold;
   box-shadow:0 4px 10px rgba(216,177,74,0.5);
   margin-top:8px;
-  cursor:pointer;
 }
 
 input, select{
@@ -51,7 +50,6 @@ input, select{
 
 <h1>Panel Admin</h1>
 
-<!-- SONIDO -->
 <audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <!-- PRODUCTOS -->
@@ -67,13 +65,6 @@ input, select{
 <div class="card">
   <h2>Productos</h2>
   <div id="listaProductos"></div>
-</div>
-
-<!-- SECCIONES -->
-<div class="card">
-  <h2>Crear sección</h2>
-  <input id="nuevaCategoria" placeholder="Nombre sección">
-  <button onclick="crearCategoria()">Crear</button>
 </div>
 
 <!-- PEDIDOS -->
@@ -123,15 +114,6 @@ function renderSelect(){
     select.innerHTML += `<option value="${cat}">${cat}</option>`;
   });
 }
-
-/* CREAR SECCIÓN */
-window.crearCategoria = async () => {
-  const nombre = document.getElementById("nuevaCategoria").value;
-  if(!nombre) return;
-
-  await addDoc(collection(db,"categorias"),{nombre});
-  document.getElementById("nuevaCategoria").value = "";
-};
 
 /* AGREGAR PRODUCTO */
 window.agregarProducto = async () => {
