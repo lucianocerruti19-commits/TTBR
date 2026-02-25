@@ -21,11 +21,6 @@ body{
   border:1px solid #222;
 }
 
-.tabs{
-  display:flex;
-  flex-wrap:wrap;
-}
-
 button{
   padding:12px;
   border:none;
@@ -34,6 +29,11 @@ button{
   color:black;
   font-weight:bold;
   margin:4px;
+  cursor:pointer;
+}
+
+button:active{
+  transform:scale(0.97);
 }
 
 input{
@@ -52,25 +52,17 @@ input{
 <h1>Panel Mozo</h1>
 
 <div class="card">
-  <h3>Mesa</h3>
-  <input id="mesa" placeholder="Número de mesa">
+  <h3>Nombre del mozo</h3>
+  <input id="mozoNombre" placeholder="Tu nombre">
+  <button onclick="guardarMozo()">Guardar</button>
 </div>
 
-<h3>Menú</h3>
-<div class="tabs" id="tabsCategorias"></div>
-
-<div id="productos"></div>
-
-<div class="card">
-  <h3>Pedido</h3>
-  <div id="carrito"></div>
-  <p>Total: $<span id="total">0</span></p>
-  <button onclick="enviarPedido()">Enviar a Cocina</button>
-</div>
+<h3>Mesas pendientes</h3>
+<div id="mesas"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
@@ -83,98 +75,59 @@ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
+const contenedor=document.getElementById("mesas");
+let mozo="";
 
-let carrito=[];
-let total=0;
-let categorias=[];
-
-/* CATEGORIAS */
-function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"),snap=>{
-    categorias=[];
-    snap.forEach(d=>categorias.push(d.data().nombre));
-    renderTabs();
-  });
+/* SONIDO */
+function beep(){
+  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  audio.play();
 }
 
-function renderTabs(){
-  const tabs=document.getElementById("tabsCategorias");
-  tabs.innerHTML="";
-  categorias.forEach(cat=>{
-    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
-  });
-}
-
-/* MOSTRAR PRODUCTOS POR CATEGORIA */
-window.mostrarCat = (cat)=>{
-  const prodDiv=document.getElementById("productos");
-  prodDiv.innerHTML="";
-
-  onSnapshot(collection(db,"productos"),snap=>{
-    prodDiv.innerHTML="";
-    snap.forEach(d=>{
-      const p=d.data();
-      if(p.categoria === cat){
-        prodDiv.innerHTML+=`
-        <div class="card">
-          <h4>${p.nombre}</h4>
-          <p>$${p.precio}</p>
-          <button onclick="agregar('${p.nombre}', ${p.precio})">
-            Agregar
-          </button>
-        </div>`;
-      }
-    });
-  });
+/* GUARDAR MOZO */
+window.guardarMozo=()=>{
+  const n=document.getElementById("mozoNombre").value;
+  if(!n) return;
+  mozo=n;
+  alert("Mozo: "+mozo);
 };
 
-/* CARRITO */
-window.agregar=(prod,precio)=>{
-  carrito.push({prod,precio});
-  total+=precio;
-  renderCarrito();
-};
+/* MOSTRAR MESAS PENDIENTES O LISTAS */
+onSnapshot(collection(db,"pedidos"),snap=>{
+  contenedor.innerHTML="";
 
-function renderCarrito(){
-  const c=document.getElementById("carrito");
-  c.innerHTML="";
-  carrito.forEach((it,idx)=>{
-    c.innerHTML+=`
-    <div class="card">
-      ${it.prod} - $${it.precio}
-      <button onclick="quitar(${idx})">X</button>
-    </div>`;
+  snap.forEach(d=>{
+    const data=d.data();
+
+    if(data.estado === "pendiente" || data.estado === "listo"){
+      contenedor.innerHTML+=`
+      <div class="card">
+        <h3>Mesa ${data.mesa}</h3>
+        <p><strong>Total:</strong> $${data.total}</p>
+        <p><strong>Estado:</strong> ${data.estado}</p>
+        <p><strong>Mozo:</strong> ${data.mozo || "sin asignar"}</p>
+
+        <button onclick="cobrar('${d.id}')">
+          💲 Cobrar
+        </button>
+      </div>`;
+
+      beep();
+    }
   });
-  document.getElementById("total").innerText=total;
-}
+});
 
-window.quitar=(i)=>{
-  total-=carrito[i].precio;
-  carrito.splice(i,1);
-  renderCarrito();
-}
+/* COBRAR Y MARCAR PAGADO (REGISTRA MOZO) */
+window.cobrar=async(id)=>{
+  if(!mozo) return alert("Ingresa tu nombre");
 
-/* ENVIAR PEDIDO A COCINA */
-window.enviarPedido=async()=>{
-  const mesa=document.getElementById("mesa").value;
-  if(!mesa) return alert("Ingrese mesa");
-
-  await addDoc(collection(db,"pedidos"),{
-    items:carrito,
-    total,
-    mesa,
-    estado:"pendiente",
-    createdAt:new Date(),
-    creadoPor:"mozo"
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"pagado",
+    mozo
   });
 
-  carrito=[];
-  total=0;
-  renderCarrito();
-  alert("Pedido enviado");
+  beep();
 };
-
-cargarCategorias();
 </script>
 
 </body>
