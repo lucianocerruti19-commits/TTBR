@@ -18,7 +18,7 @@ header{text-align:center;}
 
 h1{
   font-size:26px;
-  margin-bottom:20px;
+  margin-bottom:24px;
 }
 
 h2{
@@ -27,14 +27,14 @@ h2{
 }
 
 .section{
-  margin-bottom:28px;
+  margin-bottom:32px;
 }
 
 .card{
   background:#101010;
   padding:18px;
   border-radius:16px;
-  margin-bottom:18px;
+  margin-bottom:20px;
   border:1px solid #2b2b2b;
   font-size:18px;
 }
@@ -101,23 +101,30 @@ input, textarea{
   <button onclick="enviarPedido()">Enviar a cocina</button>
 </section>
 
-<!-- MESAS PENDIENTES -->
+<!-- MESAS ACTIVAS -->
 <section class="section">
-  <h2>Mesas pendientes</h2>
+  <h2>Mesas activas</h2>
   <div id="mesas"></div>
 </section>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  updateDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+  apiKey: "TU_API_KEY",
   authDomain: "menu-pro-app.firebaseapp.com",
   projectId: "menu-pro-app",
   storageBucket: "menu-pro-app.firebasestorage.app",
   messagingSenderId: "42917274964",
-  appId: "1:42917274964:web:13e161810ad195718994c1"
+  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -144,6 +151,17 @@ document.addEventListener("click", (e)=>{
 function vibrar(){
   if("vibrate" in navigator){
     navigator.vibrate([200,100,200]);
+  }
+}
+
+/* NOTIFICACIÓN */
+function notificar(mensaje){
+  if("Notification" in window){
+    Notification.requestPermission().then(p=>{
+      if(p === "granted"){
+        new Notification(mensaje);
+      }
+    });
   }
 }
 
@@ -251,7 +269,7 @@ window.enviarPedido = async () => {
   setTimeout(()=>location.reload(),2000);
 };
 
-/* MESAS PENDIENTES */
+/* MESAS ACTIVAS */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const cont = document.getElementById("mesas");
   cont.innerHTML = "";
@@ -260,13 +278,15 @@ onSnapshot(collection(db,"pedidos"), snap=>{
     const data = d.data();
 
     if(data.estado === "listo"){
+      notificar("Pedido listo para mesa " + data.mesa);
       vibrar();
     }
 
-    if(data.estado === "listo" || data.estado === "pendiente"){
+    if(data.estado !== "pagado"){
       cont.innerHTML += `
       <div class="card">
         <h3>Mesa ${data.mesa}</h3>
+        <p><strong>Estado:</strong> ${data.estado}</p>
         <p><strong>Total:</strong> $${data.total}</p>
         <p><strong>Nota:</strong> ${data.nota||"sin nota"}</p>
         <p><strong>Items:</strong><br>
@@ -274,6 +294,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
         </p>
         <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
         <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
+        <button onclick="entregar('${d.id}')">✔ Entregar</button>
       </div>`;
     }
   });
@@ -289,6 +310,16 @@ window.cobrar = async (id) => {
     mozoCobro
   });
 
+  vibrar();
+};
+
+/* ENTREGAR */
+window.entregar = async (id) => {
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"entregado"
+  });
+
+  notificar("Pedido entregado ✔");
   vibrar();
 };
 
