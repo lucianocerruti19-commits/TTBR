@@ -125,6 +125,10 @@ canvas{
     <h3>Carrito</h3>
     <div id="carrito"></div>
     <p>Total: $<span id="total">0</span></p>
+
+    <!-- campo de mesa -->
+    <input id="mesa" placeholder="Número de mesa">
+
     <button onclick="enviarPedido()">Enviar Pedido</button>
   </div>
 </div>
@@ -322,10 +326,12 @@ window.quitar=(i)=>{
   renderCarrito();
 }
 
+/* ENVIAR PEDIDO CON MESA */
 window.enviarPedido=async()=>{
   await addDoc(collection(db,"pedidos"),{
     items:carrito,
     total,
+    mesa: document.getElementById("mesa").value,
     estado:"pendiente",
     createdAt:new Date(),
     creadoPor:"cliente"
@@ -378,7 +384,7 @@ window.eliminar=async(id)=>{
   await deleteDoc(doc(db,"productos",id));
 };
 
-/* LOGIN (cliente sin contraseña) */
+/* LOGIN */
 window.login = (rol) => {
   if (rol === "cliente") {
     mostrar("cliente");
