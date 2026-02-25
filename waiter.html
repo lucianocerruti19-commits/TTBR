@@ -7,18 +7,33 @@
 
 <style>
 body{
-  background:#000;
-  color:#d4af37;
+  background:#050505;
+  color:#f5d28a;
   font-family:Arial;
   padding:10px;
 }
 
 .card{
-  background:#0c0c0c;
-  border:1px solid rgba(212,175,55,0.4);
-  padding:15px;
+  background:#101010;
+  padding:16px;
   border-radius:14px;
-  margin-bottom:15px;
+  margin-bottom:14px;
+  border:1px solid #222;
+}
+
+.tabs{
+  display:flex;
+  flex-wrap:wrap;
+}
+
+button{
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#d4af37;
+  color:black;
+  font-weight:bold;
+  margin:4px;
 }
 
 input{
@@ -30,19 +45,6 @@ input{
   width:100%;
   margin-bottom:8px;
 }
-
-button{
-  width:100%;
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#d4af37;
-  font-weight:bold;
-}
-
-@media print{
-  button{display:none}
-}
 </style>
 </head>
 <body>
@@ -50,18 +52,25 @@ button{
 <h1>Panel Mozo</h1>
 
 <div class="card">
-  <h2>Cargar mesa (manual)</h2>
-  <input id="mesaMozo" placeholder="Número de mesa">
-  <input id="totalMozo" placeholder="Total">
-  <button onclick="cargarMesa()">Cargar Pedido</button>
+  <h3>Mesa</h3>
+  <input id="mesa" placeholder="Número de mesa">
 </div>
 
-<h2>Pedidos Listos</h2>
-<div id="pedidos"></div>
+<h3>Menú</h3>
+<div class="tabs" id="tabsCategorias"></div>
+
+<div id="productos"></div>
+
+<div class="card">
+  <h3>Pedido</h3>
+  <div id="carrito"></div>
+  <p>Total: $<span id="total">0</span></p>
+  <button onclick="enviarPedido()">Enviar a Cocina</button>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
@@ -74,52 +83,98 @@ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
-const contenedor=document.getElementById("pedidos");
 
-/* VER LISTOS */
-onSnapshot(collection(db,"pedidos"),snap=>{
-  contenedor.innerHTML="";
-  snap.forEach(d=>{
-    const data=d.data();
-    if(data.estado==="listo"){
-      contenedor.innerHTML+=`
-      <div class="card">
-        <h3>Mesa ${data.mesa}</h3>
-        <p><strong>Total:</strong> $${data.total}</p>
-        <p><strong>Items:</strong><br>
-          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
-        </p>
-        <button onclick="entregar('${d.id}')">ENTREGADO</button>
-      </div>`;
-    }
+let carrito=[];
+let total=0;
+let categorias=[];
+
+/* CATEGORIAS */
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"),snap=>{
+    categorias=[];
+    snap.forEach(d=>categorias.push(d.data().nombre));
+    renderTabs();
   });
-});
+}
 
-/* CARGA MANUAL */
-window.cargarMesa=async()=>{
-  const mesa=document.getElementById("mesaMozo").value;
-  const total=document.getElementById("totalMozo").value;
+function renderTabs(){
+  const tabs=document.getElementById("tabsCategorias");
+  tabs.innerHTML="";
+  categorias.forEach(cat=>{
+    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+  });
+}
 
-  if(!mesa || !total) return;
+/* MOSTRAR PRODUCTOS POR CATEGORIA */
+window.mostrarCat = (cat)=>{
+  const prodDiv=document.getElementById("productos");
+  prodDiv.innerHTML="";
+
+  onSnapshot(collection(db,"productos"),snap=>{
+    prodDiv.innerHTML="";
+    snap.forEach(d=>{
+      const p=d.data();
+      if(p.categoria === cat){
+        prodDiv.innerHTML+=`
+        <div class="card">
+          <h4>${p.nombre}</h4>
+          <p>$${p.precio}</p>
+          <button onclick="agregar('${p.nombre}', ${p.precio})">
+            Agregar
+          </button>
+        </div>`;
+      }
+    });
+  });
+};
+
+/* CARRITO */
+window.agregar=(prod,precio)=>{
+  carrito.push({prod,precio});
+  total+=precio;
+  renderCarrito();
+};
+
+function renderCarrito(){
+  const c=document.getElementById("carrito");
+  c.innerHTML="";
+  carrito.forEach((it,idx)=>{
+    c.innerHTML+=`
+    <div class="card">
+      ${it.prod} - $${it.precio}
+      <button onclick="quitar(${idx})">X</button>
+    </div>`;
+  });
+  document.getElementById("total").innerText=total;
+}
+
+window.quitar=(i)=>{
+  total-=carrito[i].precio;
+  carrito.splice(i,1);
+  renderCarrito();
+}
+
+/* ENVIAR PEDIDO A COCINA */
+window.enviarPedido=async()=>{
+  const mesa=document.getElementById("mesa").value;
+  if(!mesa) return alert("Ingrese mesa");
 
   await addDoc(collection(db,"pedidos"),{
+    items:carrito,
+    total,
     mesa,
-    total:Number(total),
-    items:[],
-    estado:"listo",
-    createdAt:new Date()
+    estado:"pendiente",
+    createdAt:new Date(),
+    creadoPor:"mozo"
   });
 
-  document.getElementById("mesaMozo").value="";
-  document.getElementById("totalMozo").value="";
+  carrito=[];
+  total=0;
+  renderCarrito();
+  alert("Pedido enviado");
 };
 
-/* ENTREGAR */
-window.entregar=async(id)=>{
-  await updateDoc(doc(db,"pedidos",id),{
-    estado:"entregado"
-  });
-};
+cargarCategorias();
 </script>
 
 </body>
