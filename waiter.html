@@ -18,19 +18,7 @@ body{
 header{text-align:center;}
 .logo{width:180px;}
 
-h1{
-  font-size:26px;
-  margin-bottom:24px;
-}
-
-h2{
-  font-size:22px;
-  margin-bottom:14px;
-}
-
-.section{
-  margin-bottom:32px;
-}
+.section{margin-bottom:32px;}
 
 #tabsCategorias{
   display:grid;
@@ -50,27 +38,19 @@ h2{
   border-radius:16px;
   margin-bottom:20px;
   border:1px solid #2b2b2b;
-  font-size:18px;
 }
 
 button{
   padding:14px 18px;
-  font-size:18px;
   border:none;
   border-radius:12px;
   background:linear-gradient(145deg, #8a6a2f, #5f4a1a);
   color:white;
   font-weight:bold;
-  box-shadow:0 4px 12px rgba(138,106,47,0.6);
   margin-top:10px;
 }
 
-button:active{
-  transform:scale(0.97);
-}
-
 input, textarea{
-  font-size:18px;
   padding:12px;
   border-radius:10px;
   border:1px solid #2b2b2b;
@@ -141,14 +121,6 @@ const db = getFirestore(app);
 let carrito = [];
 let total = 0;
 let categorias = [];
-
-/* CLIC CON SONIDO (opcional) */
-document.addEventListener("click", e=>{
- if(e.target.tagName==="BUTTON"){
-   // sonido simple sin permisos
-   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
- }
-});
 
 /* CATEGORÍAS */
 function cargarCategorias(){
