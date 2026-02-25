@@ -6,39 +6,10 @@
 <title>Cocina</title>
 
 <style>
-body{
-  background:#000;
-  color:#d4af37;
-  font-family:Arial;
-  padding:10px;
-}
-
-.card{
-  background:#0c0c0c;
-  border:1px solid rgba(212,175,55,0.4);
-  padding:15px;
-  border-radius:14px;
-  margin-bottom:15px;
-}
-
-button{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-  border:none;
-  border-radius:8px;
-  font-weight:bold;
-}
-
-.listo{
-  background:#d4af37;
-  color:black;
-}
-
-.eliminar{
-  background:red;
-  color:white;
-}
+body{background:#000;color:#d4af37;font-family:Arial;padding:10px}
+.card{background:#0c0c0c;border:1px solid rgba(212,175,55,0.4);padding:15px;border-radius:14px;margin-bottom:15px}
+button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;font-weight:bold}
+.listo{background:#d4af37;color:black}
 </style>
 </head>
 <body>
@@ -70,8 +41,8 @@ onSnapshot(collection(db,"pedidos"),snap=>{
   snap.forEach(d=>{
     const data=d.data();
 
-    if(data.estado !== "entregado"){
-      if(data.estado === "pendiente") sonido.play();
+    if(data.estado === "pendiente"){
+      sonido.play();
 
       contenedor.innerHTML+=`
       <div class="card">
@@ -80,7 +51,6 @@ onSnapshot(collection(db,"pedidos"),snap=>{
         <p><strong>Items:</strong><br>
           ${data.items.map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
-        <p><strong>Estado:</strong> ${data.estado}</p>
         <button class="listo" onclick="marcar('${d.id}')">LISTO</button>
       </div>`;
     }
