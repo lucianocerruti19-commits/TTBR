@@ -10,37 +10,54 @@ body{
   background:#050505;
   color:#f5d28a;
   font-family:Arial;
-  padding:12px;
+  padding:14px;
 }
 
-header{text-align:center;}
-.logo{width:180px;}
+header{
+  text-align:center;
+}
 
-h1{font-size:26px;}
-h2{font-size:22px;}
+.logo{
+  width:180px;
+}
+
+h1{
+  font-size:26px;
+  margin-bottom:20px;
+}
+
+h2{
+  font-size:22px;
+  margin-bottom:14px;
+}
 
 .section{
-  margin-bottom:24px;
+  margin-bottom:28px;
 }
 
 .card{
   background:#101010;
-  padding:16px;
-  border-radius:14px;
-  margin-bottom:12px;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:18px;
   border:1px solid #222;
   font-size:18px;
 }
 
 button{
-  padding:14px;
+  padding:14px 18px;
   font-size:18px;
   border:none;
   border-radius:12px;
-  background:#d4af37;
+  background:#ffd700;
   color:black;
   font-weight:bold;
-  margin-top:8px;
+  box-shadow:0 4px 10px rgba(255,215,0,0.6);
+  margin-top:10px;
+}
+
+button:active{
+  transform:scale(0.97);
 }
 
 input, textarea{
@@ -52,6 +69,7 @@ input, textarea{
   color:white;
   width:100%;
   box-sizing:border-box;
+  margin-top:8px;
 }
 </style>
 </head>
@@ -120,6 +138,13 @@ function sonido(){
   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
 
+/* CLICK GLOBAL CON SONIDO */
+document.addEventListener("click", (e)=>{
+  if(e.target.tagName === "BUTTON"){
+    sonido();
+  }
+});
+
 /* VIBRACIÓN */
 function vibrar(){
   if("vibrate" in navigator){
@@ -180,7 +205,6 @@ window.agregar = (prod, precio) => {
   carrito.push({prod, precio});
   total += precio;
   renderCarrito();
-  sonido();
 };
 
 function renderCarrito(){
@@ -200,7 +224,6 @@ window.quitar = (i) => {
   total -= carrito[i].precio;
   carrito.splice(i,1);
   renderCarrito();
-  sonido();
 };
 
 /* ENVIAR PEDIDO */
@@ -227,11 +250,10 @@ window.enviarPedido = async () => {
   renderCarrito();
   document.getElementById("nota").value = "";
 
-  document.body.style.background = "#d4af37";
+  document.body.style.background = "#ffd700";
   document.body.innerHTML = "<h1 style='text-align:center'>Pedido enviado ✔</h1>";
 
   setTimeout(()=>location.reload(),2000);
-  sonido();
 };
 
 /* MESAS */
@@ -248,7 +270,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
 
     if(data.estado === "listo" || data.estado === "pendiente"){
       cont.innerHTML += `
-      <div class="card ${data.estado==='listo'?'listo':''}">
+      <div class="card">
         <h3>Mesa ${data.mesa}</h3>
         <p><strong>Total:</strong> $${data.total}</p>
         <p><strong>Nota:</strong> ${data.nota||"sin nota"}</p>
@@ -272,7 +294,6 @@ window.cobrar = async (id) => {
     mozoCobro
   });
 
-  sonido();
   vibrar();
 };
 
