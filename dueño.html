@@ -6,37 +6,10 @@
 <title>Dueño</title>
 
 <style>
-body{
-  background:#000;
-  color:#d4af37;
-  font-family:Arial;
-  padding:15px;
-}
-
-.card{
-  background:#0c0c0c;
-  border:1px solid rgba(212,175,55,0.4);
-  padding:15px;
-  border-radius:14px;
-  margin-bottom:15px;
-}
-
-button{
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#d4af37;
-  font-weight:bold;
-}
-
-input{
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #222;
-  background:#111;
-  color:white;
-  width:100%;
-}
+body{background:#000;color:#d4af37;font-family:Arial;padding:15px}
+.card{background:#0c0c0c;border:1px solid rgba(212,175,55,0.4);padding:15px;border-radius:14px;margin-bottom:15px}
+input{padding:10px;border-radius:8px;border:1px solid #222;background:#111;color:white;width:100%}
+button{padding:10px;border:none;border-radius:8px;background:#d4af37;font-weight:bold}
 </style>
 </head>
 <body>
@@ -44,7 +17,7 @@ input{
 <h1>Panel Dueño</h1>
 
 <div class="card">
-  <h2>Filtrar por fecha</h2>
+  <h2>Filtrar</h2>
   <input type="date" id="fechaFiltro">
   <button onclick="filtrar()">Filtrar</button>
   <button onclick="cargar()">Ver todo</button>
@@ -74,7 +47,7 @@ input{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
@@ -90,7 +63,6 @@ const db=getFirestore(app);
 
 let pedidosCache=[];
 
-/* CARGAR ESTADISTICAS */
 onSnapshot(collection(db,"pedidos"),snap=>{
   pedidosCache=[];
   let totalGeneral=0;
@@ -103,7 +75,7 @@ onSnapshot(collection(db,"pedidos"),snap=>{
     const d=doc.data();
     pedidosCache.push({...d});
 
-    if(d.estado==="entregado"){
+    if(d.estado === "listo" || d.estado === "entregado"){
       totalGeneral+=d.total;
 
       const fecha=new Date(d.createdAt.seconds*1000).toDateString();
@@ -121,7 +93,6 @@ onSnapshot(collection(db,"pedidos"),snap=>{
   mostrarHistorial(pedidosCache);
 });
 
-/* HISTORIAL */
 function mostrarHistorial(list){
   const h=document.getElementById("historial");
   h.innerHTML="";
@@ -134,14 +105,11 @@ function mostrarHistorial(list){
       <strong>Mesa:</strong> ${p.mesa || "-"}<br>
       <strong>Total:</strong> $${p.total}<br>
       <strong>Estado:</strong> ${p.estado}<br>
-      <strong>Fecha:</strong> ${fecha.toLocaleString()}<br>
-      <strong>Items:</strong><br>
-      ${p.items.map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+      <strong>Fecha:</strong> ${fecha.toLocaleString()}
     </div>`;
   });
 }
 
-/* FILTRO */
 window.filtrar=()=>{
   const f=document.getElementById("fechaFiltro").value;
   if(!f) return;
@@ -158,10 +126,8 @@ window.cargar=()=>{
   mostrarHistorial(pedidosCache);
 };
 
-/* EXPORT EXCEL */
 window.exportar=()=>{
   let csv="mesa,total,fecha,estado\n";
-
   pedidosCache.forEach(p=>{
     const fecha=new Date(p.createdAt.seconds*1000);
     csv+=`${p.mesa||"-"},${p.total},${fecha.toLocaleString()},${p.estado}\n`;
