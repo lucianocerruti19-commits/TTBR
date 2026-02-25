@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TOTOBAR</title>
 
 <style>
@@ -15,34 +14,27 @@ body{
 
 header{
   text-align:center;
-  padding:28px;
+  padding:24px;
   background:#0b0b0b;
   border-bottom:3px solid #d4af37;
 }
 
-.logo{width:220px;}
-
-.section{
-  display:none;
-  padding:20px;
-}
+.section{display:none; padding:20px;}
 
 button{
   padding:14px 18px;
   border:none;
   border-radius:12px;
-  background:linear-gradient(135deg, #d4af37, #9b7208);
+  background:linear-gradient(135deg,#d4af37,#9b7208);
   color:black;
   font-weight:bold;
   margin:6px;
-  box-shadow:0 4px 10px rgba(216,175,74,0.5);
 }
 </style>
 </head>
 <body>
 
 <header>
-  <img src="logo.png" class="logo">
   <h2>TOTOBAR</h2>
 </header>
 
@@ -51,36 +43,32 @@ button{
 <!-- MENU PRINCIPAL -->
 <section id="menu" class="section" style="display:block">
   <h3>Seleccionar rol</h3>
-  <button onclick="login('cliente')">Cliente (solo ver)</button>
+  <button onclick="mostrar('cliente')">Cliente (solo ver)</button>
   <button onclick="login('mozo')">Mozo</button>
   <button onclick="login('cocina')">Cocina</button>
   <button onclick="login('admin')">Admin</button>
   <button onclick="login('dueno')">Dueño</button>
 </section>
 
-<!-- CLIENTE (SOLO VISUAL) -->
+<!-- CLIENTE (dentro del index) -->
 <section id="cliente" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <h3>Menú (solo visual)</h3>
-  <iframe src="cliente.html" style="width:100%; height:80vh; border:none;"></iframe>
-</section>
 
-<!-- MOZO -->
-<section id="mozo" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="mozo.html" style="width:100%; height:80vh; border:none;"></iframe>
-</section>
-
-<!-- COCINA -->
-<section id="cocina" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="cocina.html" style="width:100%; height:80vh; border:none;"></iframe>
+  <!-- acá poné tu contenido de cliente -->
+  <p>Secciones y menú (visual)</p>
 </section>
 
 <!-- ADMIN -->
 <section id="admin" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="admin.html" style="width:100%; height:80vh; border:none;"></iframe>
+</section>
+
+<!-- COCINA -->
+<section id="cocina" class="section">
+  <button onclick="mostrar('menu')">⬅ Volver</button>
+  <iframe src="cocina.html" style="width:100%; height:80vh; border:none;"></iframe>
 </section>
 
 <!-- DUEÑO -->
@@ -92,14 +80,12 @@ button{
 <script>
 const click = document.getElementById("click");
 
-/* SONIDO EN BOTONES */
-document.addEventListener("click", e=>{
-  if(e.target.tagName === "BUTTON"){
-    click.play();
-  }
+/* sonido */
+document.addEventListener("click",e=>{
+  if(e.target.tagName==="BUTTON") click.play();
 });
 
-/* LOGIN POR ROLES */
+/* login */
 function login(rol){
   const pass = prompt("Contraseña:");
   if(!pass) return;
@@ -111,14 +97,12 @@ function login(rol){
     (rol==="dueno" && pass==="toto321")
   ){
     mostrar(rol);
-  } else if(rol==="cliente"){
-    mostrar("cliente");
   } else {
     alert("Contraseña incorrecta");
   }
 }
 
-/* MOSTRAR SECCION */
+/* mostrar secciones */
 function mostrar(id){
   document.querySelectorAll(".section").forEach(s=>s.style.display="none");
   document.getElementById(id).style.display="block";
@@ -126,4 +110,4 @@ function mostrar(id){
 </script>
 
 </body>
-</html> 
+</html>
