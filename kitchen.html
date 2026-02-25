@@ -3,8 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <title>Cocina</title>
+<style>
+body{
+  background:#000;
+  color:#d4af37;
+  font-family:Arial;
+  padding:10px;
+  transition: background 0.8s;
+}
+.dorado{
+  background:#d4af37 !important;
+  color:black !important;
+}
+.card{
+  background:#0c0c0c;
+  border:1px solid rgba(212,175,55,0.4);
+  padding:15px;
+  border-radius:14px;
+  margin-bottom:15px;
+}
+button{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border:none;
+  border-radius:8px;
+  font-weight:bold;
+  background:#d4af37;
+  color:black;
+  cursor:pointer;
+}
+</style>
 </head>
 <body>
+
 <h1>Cocina</h1>
 <audio id="alerta" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 <div id="pedidos"></div>
@@ -19,7 +51,16 @@ const db=getFirestore(app);
 const cont=document.getElementById("pedidos");
 const sonido=document.getElementById("alerta");
 
-/* MOSTRAR */
+function sonidoClick(){
+  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+}
+
+function dorado(){
+  document.body.classList.add("dorado");
+  setTimeout(()=>document.body.classList.remove("dorado"),1500);
+}
+
+/* PEDIDOS */
 onSnapshot(collection(db,"pedidos"),snap=>{
   cont.innerHTML="";
 
@@ -30,7 +71,7 @@ onSnapshot(collection(db,"pedidos"),snap=>{
       sonido.play();
 
       cont.innerHTML+=`
-      <div>
+      <div class="card">
         <h3>Mesa ${data.mesa}</h3>
         <p><strong>Mozo:</strong> ${data.mozo}</p>
         <p><strong>Nota:</strong> ${data.nota || "sin nota"}</p>
@@ -46,7 +87,11 @@ onSnapshot(collection(db,"pedidos"),snap=>{
 /* LISTO */
 window.marcar=async(id)=>{
   await updateDoc(doc(db,"pedidos",id),{estado:"listo"});
-  sonido.play();
+  sonidoClick();
+  dorado();
+
+  // aviso al mozo (si está abierto)
+  localStorage.setItem("pedidoListo", id);
 };
 </script>
 </body>
