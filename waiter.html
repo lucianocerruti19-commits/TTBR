@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mozo</title>
 
 <style>
@@ -19,11 +18,6 @@ header{text-align:center;}
 h1{
   font-size:26px;
   margin-bottom:24px;
-}
-
-h2{
-  font-size:22px;
-  margin-bottom:14px;
 }
 
 .section{
@@ -49,10 +43,6 @@ button{
   font-weight:bold;
   box-shadow:0 4px 12px rgba(138,106,47,0.6);
   margin-top:10px;
-}
-
-button:active{
-  transform:scale(0.97);
 }
 
 input, textarea{
@@ -82,7 +72,15 @@ input, textarea{
   <button onclick="guardarMozo()">Guardar</button>
 </section>
 
-<!-- MESAS PENDIENTES / CONFIRMACIÓN -->
+<!-- TOMAR PEDIDO (mozo) -->
+<section class="section card">
+  <h2>Tomar pedido (mesa)</h2>
+  <input id="mesaPedido" placeholder="Mesa">
+  <textarea id="pedidoTexto" placeholder="Pedido del cliente"></textarea>
+  <button onclick="tomarPedido()">Enviar a cocina</button>
+</section>
+
+<!-- PEDIDOS DEL CLIENTE PENDIENTES -->
 <section class="section">
   <h2>Pedidos pendientes</h2>
   <div id="pendientes"></div>
@@ -106,12 +104,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "menu-pro-app.firebaseapp.com",
-  projectId: "menu-pro-app",
-  storageBucket: "menu-pro-app.firebasestorage.app",
-  messagingSenderId: "42917274964",
-  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
+ apiKey:"TU_API_KEY",
+ authDomain:"menu-pro-app.firebaseapp.com",
+ projectId:"menu-pro-app",
+ storageBucket:"menu-pro-app.firebasestorage.app",
+ messagingSenderId:"42917274964",
+ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -135,18 +133,16 @@ function notificar(mensaje){
   }
 }
 
-/* VIBRACIÓN */
+/* VIBRAR */
 function vibrar(){
   if("vibrate" in navigator){
     navigator.vibrate([200,100,200]);
   }
 }
 
-/* CLICK CON SONIDO */
-document.addEventListener("click", (e)=>{
-  if(e.target.tagName === "BUTTON"){
-    sonido();
-  }
+/* CLICK SONIDO */
+document.addEventListener("click", e=>{
+ if(e.target.tagName==="BUTTON") sonido();
 });
 
 /* GUARDAR MOZO */
@@ -157,18 +153,39 @@ window.guardarMozo = () => {
   alert("Mozo: " + mozo);
 };
 
-/* PEDIDOS PENDIENTES (confirmación) */
+/* TOMAR PEDIDO COMO MOZO */
+window.tomarPedido = async () => {
+  const mesa = document.getElementById("mesaPedido").value;
+  const texto = document.getElementById("pedidoTexto").value;
+
+  if(!mesa || !texto) return alert("Completa mesa y pedido");
+
+  await addDoc(collection(db,"pedidos"),{
+    items:[{prod:texto, precio:0}],
+    total:0,
+    mesa,
+    mozo,
+    estado:"en_cocina",
+    creadoPor:"mozo",
+    createdAt:new Date()
+  });
+
+  document.getElementById("pedidoTexto").value="";
+  alert("Pedido enviado a cocina");
+};
+
+/* PEDIDOS DEL CLIENTE (confirmar) */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const pend = document.getElementById("pendientes");
   const cont = document.getElementById("mesas");
 
-  pend.innerHTML = "";
-  cont.innerHTML = "";
+  pend.innerHTML="";
+  cont.innerHTML="";
 
   snap.forEach(d=>{
     const data = d.data();
 
-    // PEDIDOS QUE LLEGAN DEL CLIENTE
+    // pedidos del cliente esperando confirmación
     if(data.estado === "pendiente_mozo"){
       pend.innerHTML += `
       <div class="card">
@@ -181,7 +198,7 @@ onSnapshot(collection(db,"pedidos"), snap=>{
       </div>`;
     }
 
-    // MESAS ACTIVAS (no pagadas)
+    // mesas activas
     if(data.estado !== "pagado"){
       cont.innerHTML += `
       <div class="card">
@@ -192,8 +209,6 @@ onSnapshot(collection(db,"pedidos"), snap=>{
           ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
 
-        <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
-        <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
         <button onclick="entregar('${d.id}')">✔ Entregar</button>
       </div>`;
     }
@@ -205,24 +220,11 @@ window.confirmar = async (id) => {
   const m = document.getElementById(`mesa-${id}`).value;
 
   await updateDoc(doc(db,"pedidos",id),{
-    estado: "en_cocina",
+    estado:"en_cocina",
     mesa: m || ""
   });
 
   notificar("Pedido confirmado y enviado a cocina");
-  vibrar();
-};
-
-/* COBRAR */
-window.cobrar = async (id) => {
-  const mozoCobro = document.getElementById(`cobro-${id}`).value;
-  if(!mozoCobro) return alert("Ingrese nombre del mozo");
-
-  await updateDoc(doc(db,"pedidos",id),{
-    estado:"pagado",
-    mozoCobro
-  });
-
   vibrar();
 };
 
@@ -235,7 +237,6 @@ window.entregar = async (id) => {
   notificar("Pedido entregado ✔");
   vibrar();
 };
-
 </script>
 </body>
 </html>
