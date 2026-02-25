@@ -101,14 +101,13 @@ canvas{
   <h2>Tutto Sistema</h2>
 </header>
 
-<!-- MENÚ PRINCIPAL -->
+<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<!-- LOGIN -->
 <div id="selector" class="section" style="display:block">
   <h3>Seleccionar modo</h3>
-  <button onclick="login('cliente')">Cliente</button>
-  <button onclick="login('mozo')">Mozo</button>
-  <button onclick="login('cocina')">Cocina</button>
-  <button onclick="login('admin')">Admin</button>
-  <button onclick="login('dueno')">Dueño</button>
+  <input id="pass" type="password" placeholder="Contraseña">
+  <button onclick="login()">Entrar</button>
 </div>
 
 <!-- CLIENTE -->
@@ -116,9 +115,7 @@ canvas{
   <button onclick="mostrar('selector')">⬅ Volver</button>
 
   <h3>Pedido</h3>
-
   <div class="tabs" id="tabsCategorias"></div>
-
   <div id="productos"></div>
 
   <div class="card">
@@ -126,9 +123,7 @@ canvas{
     <div id="carrito"></div>
     <p>Total: $<span id="total">0</span></p>
 
-    <!-- campo de mesa -->
     <input id="mesa" placeholder="Número de mesa">
-
     <button onclick="enviarPedido()">Enviar Pedido</button>
   </div>
 </div>
@@ -204,7 +199,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebas
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
-apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+apiKey:"TU_API_KEY",
 authDomain:"menu-pro-app.firebaseapp.com",
 projectId:"menu-pro-app",
 storageBucket:"menu-pro-app.firebasestorage.app",
@@ -218,6 +213,17 @@ let carrito=[];
 let total=0;
 let pedidosCache=[];
 let categorias=[];
+
+/* SONIDO EN BOTONES */
+function sonido(){
+  document.getElementById("click").play();
+}
+
+document.addEventListener("click", e=>{
+  if(e.target.tagName === "BUTTON"){
+    sonido();
+  }
+});
 
 /* NOTIFICACIONES */
 function notificar(msg){
@@ -242,6 +248,31 @@ onSnapshot(collection(db,"pedidos"),snap=>{
     }
   });
 });
+
+/* LOGIN */
+window.login = () => {
+  const pass = document.getElementById("pass").value;
+  if(!pass) return;
+
+  if(pass === "toto321"){
+    mostrar("dueno");
+  }
+  else if(pass === "mozo2026"){
+    mostrar("mozo");
+  }
+  else if(pass === "cocina2026"){
+    mostrar("cocina");
+  }
+  else{
+    alert("Contraseña incorrecta");
+  }
+};
+
+/* MOSTRAR SECCION */
+window.mostrar = (id) => {
+  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="block";
+};
 
 /* CATEGORIAS */
 function cargarCategorias(){
@@ -277,7 +308,7 @@ window.crearCategoria=async()=>{
   document.getElementById("nuevaCategoria").value="";
 };
 
-/* PRODUCTOS POR CATEGORIA */
+/* PRODUCTOS */
 window.mostrarCat = (cat)=>{
   const prodDiv=document.getElementById("productos");
   prodDiv.innerHTML="";
@@ -326,7 +357,7 @@ window.quitar=(i)=>{
   renderCarrito();
 }
 
-/* ENVIAR PEDIDO CON MESA */
+/* ENVIAR PEDIDO */
 window.enviarPedido=async()=>{
   await addDoc(collection(db,"pedidos"),{
     items:carrito,
@@ -382,33 +413,6 @@ window.editarPrecio=async(id)=>{
 
 window.eliminar=async(id)=>{
   await deleteDoc(doc(db,"productos",id));
-};
-
-/* LOGIN */
-window.login = (rol) => {
-  if (rol === "cliente") {
-    mostrar("cliente");
-    return;
-  }
-
-  const pass = prompt("Contraseña:");
-  if (!pass) return;
-
-  if(
-    (rol==="dueno" && pass==="toto321") ||
-    (rol==="admin" && pass==="toto321") ||
-    (rol==="cocina" && pass==="cocina2026") ||
-    (rol==="mozo" && pass==="mozo2026")
-  ){
-    mostrar(rol);
-  } else {
-    alert("Contraseña incorrecta");
-  }
-};
-
-window.mostrar = (id) => {
-  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="block";
 };
 
 /* DUENO PANEL */
