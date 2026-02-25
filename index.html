@@ -9,26 +9,51 @@ body{
   margin:0;
   background:#050505;
   color:#f5d28a;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
 }
 
 header{
   text-align:center;
-  padding:24px;
+  padding:26px 10px;
   background:#0b0b0b;
   border-bottom:3px solid #d4af37;
+  box-shadow:0 6px 14px rgba(0,0,0,0.8);
 }
 
-.section{display:none; padding:20px;}
+h2{
+  margin:0;
+}
+
+.section{
+  display:none;
+  padding:22px;
+}
 
 button{
   padding:14px 18px;
   border:none;
-  border-radius:12px;
-  background:linear-gradient(135deg,#d4af37,#9b7208);
+  border-radius:14px;
+  background:linear-gradient(135deg, #d4af37, #9b7208);
   color:black;
   font-weight:bold;
   margin:6px;
+  cursor:pointer;
+  box-shadow:0 4px 10px rgba(212,175,55,0.6);
+  transition:0.2s;
+}
+
+button:hover{
+  transform:translateY(-2px);
+  opacity:0.95;
+}
+
+.card{
+  background:#101010;
+  border:1px solid #222;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:14px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.7);
 }
 </style>
 </head>
@@ -50,13 +75,14 @@ button{
   <button onclick="login('dueno')">Dueño</button>
 </section>
 
-<!-- CLIENTE (dentro del index) -->
+<!-- CLIENTE (visual) -->
 <section id="cliente" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
-  <h3>Menú (solo visual)</h3>
 
-  <!-- acá poné tu contenido de cliente -->
-  <p>Secciones y menú (visual)</p>
+  <h3>Menú</h3>
+  <div class="card">
+    <p>Secciones y productos (solo visual)</p>
+  </div>
 </section>
 
 <!-- ADMIN -->
@@ -80,12 +106,14 @@ button{
 <script>
 const click = document.getElementById("click");
 
-/* sonido */
-document.addEventListener("click",e=>{
-  if(e.target.tagName==="BUTTON") click.play();
+/* SONIDO EN BOTONES */
+document.addEventListener("click", e=>{
+  if(e.target.tagName === "BUTTON"){
+    click.play();
+  }
 });
 
-/* login */
+/* LOGIN POR ROLES */
 function login(rol){
   const pass = prompt("Contraseña:");
   if(!pass) return;
@@ -102,7 +130,7 @@ function login(rol){
   }
 }
 
-/* mostrar secciones */
+/* MOSTRAR SECCION */
 function mostrar(id){
   document.querySelectorAll(".section").forEach(s=>s.style.display="none");
   document.getElementById(id).style.display="block";
