@@ -1,25 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mozo</title>
 
 <style>
-body{background:#000;color:#d4af37;font-family:Arial;padding:10px}
-.card{background:#0c0c0c;border:1px solid rgba(212,175,55,0.4);padding:15px;border-radius:14px;margin-bottom:15px}
-button{width:100%;padding:10px;border:none;border-radius:8px;background:#d4af37;font-weight:bold}
-@media print{button{display:none}}
+body{
+  background:#000;
+  color:#d4af37;
+  font-family:Arial;
+  padding:10px;
+}
+
+.card{
+  background:#0c0c0c;
+  border:1px solid rgba(212,175,55,0.4);
+  padding:15px;
+  border-radius:14px;
+  margin-bottom:15px;
+}
+
+input{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #222;
+  background:#111;
+  color:white;
+  width:100%;
+  margin-bottom:8px;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#d4af37;
+  font-weight:bold;
+}
+
+@media print{
+  button{display:none}
+}
 </style>
 </head>
 <body>
 
 <h1>Panel Mozo</h1>
+
+<div class="card">
+  <h2>Cargar mesa (manual)</h2>
+  <input id="mesaMozo" placeholder="Número de mesa">
+  <input id="totalMozo" placeholder="Total">
+  <button onclick="cargarMesa()">Cargar Pedido</button>
+</div>
+
+<h2>Pedidos Listos</h2>
 <div id="pedidos"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
@@ -34,6 +76,7 @@ const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 const contenedor=document.getElementById("pedidos");
 
+/* VER LISTOS */
 onSnapshot(collection(db,"pedidos"),snap=>{
   contenedor.innerHTML="";
   snap.forEach(d=>{
@@ -44,7 +87,7 @@ onSnapshot(collection(db,"pedidos"),snap=>{
         <h3>Mesa ${data.mesa}</h3>
         <p><strong>Total:</strong> $${data.total}</p>
         <p><strong>Items:</strong><br>
-          ${data.items.map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
         <button onclick="entregar('${d.id}')">ENTREGADO</button>
       </div>`;
@@ -52,8 +95,30 @@ onSnapshot(collection(db,"pedidos"),snap=>{
   });
 });
 
+/* CARGA MANUAL */
+window.cargarMesa=async()=>{
+  const mesa=document.getElementById("mesaMozo").value;
+  const total=document.getElementById("totalMozo").value;
+
+  if(!mesa || !total) return;
+
+  await addDoc(collection(db,"pedidos"),{
+    mesa,
+    total:Number(total),
+    items:[],
+    estado:"listo",
+    createdAt:new Date()
+  });
+
+  document.getElementById("mesaMozo").value="";
+  document.getElementById("totalMozo").value="";
+};
+
+/* ENTREGAR */
 window.entregar=async(id)=>{
-  await updateDoc(doc(db,"pedidos",id),{estado:"entregado"});
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"entregado"
+  });
 };
 </script>
 
