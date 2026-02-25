@@ -2,9 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mozo</title>
-
 <style>
 body{
   background:#050505;
@@ -12,20 +10,19 @@ body{
   font-family:Arial;
   padding:10px;
 }
-
 .card{
   background:#101010;
   padding:16px;
   border-radius:14px;
   margin-bottom:14px;
   border:1px solid #222;
+  transition: transform .3s, background .3s;
 }
-
-.tabs{
-  display:flex;
-  flex-wrap:wrap;
+.card.listo{
+  background:#d4af37;
+  color:black;
+  transform:scale(1.02);
 }
-
 button{
   padding:12px;
   border:none;
@@ -33,81 +30,41 @@ button{
   background:#d4af37;
   color:black;
   font-weight:bold;
-  margin:4px;
   cursor:pointer;
-}
-
-button:active{transform:scale(0.97)}
-
-input, textarea{
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #222;
-  background:#111;
-  color:white;
-  width:100%;
-  margin-bottom:8px;
-  box-sizing:border-box;
 }
 </style>
 </head>
 <body>
 
 <h1>Panel Mozo</h1>
-
 <div class="card">
   <h3>Nombre del mozo</h3>
-  <input id="mozoNombre" placeholder="Tu nombre">
+  <input id="mozoNombre">
   <button onclick="guardarMozo()">Guardar</button>
 </div>
 
-<h3>Menú (como cliente)</h3>
-<div class="tabs" id="tabsCategorias"></div>
-<div id="productos"></div>
-
-<div class="card">
-  <h3>Pedido</h3>
-  <div id="carrito"></div>
-  <p>Total: $<span id="total">0</span></p>
-
-  <input id="mesa" placeholder="Número de mesa">
-  <textarea id="nota" placeholder="Nota para cocina (sin aderezo, sin cebolla, etc)"></textarea>
-
-  <button onclick="enviarPedido()">Enviar a Cocina</button>
-</div>
-
-<h3>Mesas pendientes</h3>
 <div id="mesas"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const firebaseConfig={
-apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
-authDomain:"menu-pro-app.firebaseapp.com",
-projectId:"menu-pro-app",
-storageBucket:"menu-pro-app.firebasestorage.app",
-messagingSenderId:"42917274964",
-appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
-};
-
+const firebaseConfig={/* tu config */};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
-
-let carrito=[];
-let total=0;
-let categorias=[];
+const cont=document.getElementById("mesas");
 let mozo="";
 
-/* VIBRACIÓN */
+function sonido(){
+  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+}
+
 function vibrar(){
   if("vibrate" in navigator){
     navigator.vibrate([200,100,200]);
   }
 }
 
-/* GUARDAR MOZO */
 window.guardarMozo=()=>{
   const n=document.getElementById("mozoNombre").value;
   if(!n) return;
@@ -115,130 +72,26 @@ window.guardarMozo=()=>{
   alert("Mozo: "+mozo);
 };
 
-/* CATEGORIAS */
-function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"),snap=>{
-    categorias=[];
-    snap.forEach(d=>categorias.push(d.data().nombre));
-    renderTabs();
-  });
-}
-
-function renderTabs(){
-  const tabs=document.getElementById("tabsCategorias");
-  tabs.innerHTML="";
-  categorias.forEach(cat=>{
-    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
-  });
-}
-
-/* PRODUCTOS */
-window.mostrarCat = (cat)=>{
-  const prodDiv=document.getElementById("productos");
-  prodDiv.innerHTML="";
-
-  onSnapshot(collection(db,"productos"),snap=>{
-    prodDiv.innerHTML="";
-    snap.forEach(d=>{
-      const p=d.data();
-      if(p.categoria === cat){
-        prodDiv.innerHTML+=`
-        <div class="card">
-          <h4>${p.nombre}</h4>
-          <p>$${p.precio}</p>
-          <button onclick="agregar('${p.nombre}', ${p.precio})">
-            Agregar
-          </button>
-        </div>`;
-      }
-    });
-  });
-};
-
-/* CARRITO */
-window.agregar=(prod,precio)=>{
-  carrito.push({prod,precio});
-  total+=precio;
-  renderCarrito();
-};
-
-function renderCarrito(){
-  const c=document.getElementById("carrito");
-  c.innerHTML="";
-  carrito.forEach((it,idx)=>{
-    c.innerHTML+=`
-    <div class="card">
-      ${it.prod} - $${it.precio}
-      <button onclick="quitar(${idx})">X</button>
-    </div>`;
-  });
-  document.getElementById("total").innerText=total;
-}
-
-window.quitar=(i)=>{
-  total-=carrito[i].precio;
-  carrito.splice(i,1);
-  renderCarrito();
-}
-
-/* ENVIAR PEDIDO CON NOTA (A COCINA) */
-window.enviarPedido=async()=>{
-  const mesa=document.getElementById("mesa").value;
-  const nota=document.getElementById("nota").value;
-
-  if(!mesa) return alert("Ingrese mesa");
-  if(!mozo) return alert("Ingresa nombre del mozo");
-
-  await addDoc(collection(db,"pedidos"),{
-    items:carrito,
-    total,
-    mesa,
-    mozo,
-    nota,
-    estado:"pendiente",
-    createdAt:new Date(),
-    creadoPor:"mozo"
-  });
-
-  carrito=[];
-  total=0;
-  renderCarrito();
-  document.getElementById("nota").value="";
-  alert("Pedido enviado");
-};
-
-/* MESAS PENDIENTES */
+/* MESAS */
 onSnapshot(collection(db,"pedidos"),snap=>{
-  const cont=document.getElementById("mesas");
   cont.innerHTML="";
 
   snap.forEach(d=>{
     const data=d.data();
-
-    if(data.estado === "pendiente" || data.estado === "listo"){
-      const listo = data.estado === "listo";
-
+    if(data.estado === "listo"){
       cont.innerHTML+=`
-      <div class="card ${listo ? 'listo' : ''}">
+      <div class="card listo">
         <h3>Mesa ${data.mesa}</h3>
-        <p><strong>Mozo:</strong> ${data.mozo}</p>
         <p><strong>Total:</strong> $${data.total}</p>
         <p><strong>Nota:</strong> ${data.nota || "sin nota"}</p>
         <p><strong>Items:</strong><br>
           ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
         </p>
-        <p><strong>Estado:</strong> ${data.estado}</p>
-
         <input id="cobro-${d.id}" placeholder="Mozo que cobra">
-
-        <button onclick="cobrar('${d.id}')">
-          💲 Cobrar
-        </button>
+        <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
       </div>`;
 
-      if(listo){
-        vibrar();
-      }
+      vibrar();
     }
   });
 });
@@ -253,11 +106,9 @@ window.cobrar=async(id)=>{
     mozoCobro
   });
 
+  sonido();
   vibrar();
 };
-
-cargarCategorias();
 </script>
-
 </body>
 </html>
