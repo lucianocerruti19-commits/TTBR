@@ -50,6 +50,7 @@ input, select{
 
 <h1>Panel Admin</h1>
 
+<!-- SONIDO -->
 <audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <!-- PRODUCTOS -->
@@ -75,43 +76,44 @@ input, select{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE",
-  messagingSenderId: "TU_SENDER",
-  appId: "TU_APP_ID"
+  authDomain: "menu-pro-app.firebaseapp.com",
+  projectId: "menu-pro-app",
+  storageBucket: "menu-pro-app.firebasestorage.app",
+  messagingSenderId: "42917274964",
+  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let categorias = [];
-
-/* SONIDO GLOBAL EN BOTONES */
+/* SONIDO EN BOTONES */
 document.addEventListener("click", e=>{
   if(e.target.tagName === "BUTTON"){
     document.getElementById("click").play();
   }
 });
 
-/* CATEGORÍAS */
+/* CATEGORÍAS (select) */
 function cargarCategorias(){
   onSnapshot(collection(db,"categorias"), snap=>{
-    categorias = [];
-    snap.forEach(d => categorias.push(d.data().nombre));
-    renderSelect();
-  });
-}
+    const select = document.getElementById("prodCategoria");
+    select.innerHTML = "";
 
-function renderSelect(){
-  const select = document.getElementById("prodCategoria");
-  select.innerHTML = "";
-  categorias.forEach(cat=>{
-    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+    snap.forEach(d=>{
+      select.innerHTML += `<option value="${d.data().nombre}">${d.data().nombre}</option>`;
+    });
   });
 }
 
@@ -162,7 +164,7 @@ window.borrarProducto = async (id) => {
   await deleteDoc(doc(db,"productos",id));
 };
 
-/* PEDIDOS DETALLE */
+/* PEDIDOS CON DETALLE */
 onSnapshot(collection(db,"pedidos"), snap=>{
   const cont = document.getElementById("pedidos");
   cont.innerHTML = "";
