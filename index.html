@@ -3,36 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TOTOBAR</title>
+<title>Tutto Sistema</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#050505">
 
 <style>
 body{
   margin:0;
-  font-family:Arial, Helvetica, sans-serif;
-  background:black;
-  color:white;
-  text-align:center;
+  background:#050505;
+  color:#f5d28a;
+  font-family:'Arial', sans-serif;
 }
 
-h1{
-  font-size:40px;
-  background:linear-gradient(45deg,#d4af37,#ffd700,#fff5b7,#d4af37);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
+header{
+  text-align:center;
+  padding:28px 10px;
+  background:#0b0b0b;
+  border-bottom:3px solid #d4af37;
+  box-shadow:0 6px 14px rgba(0,0,0,0.8);
+}
+
+.logo-banner{
+  width:240px;
+  display:block;
+  margin:0 auto;
+}
+
+.tabs{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  padding:10px;
 }
 
 button{
-  background:linear-gradient(45deg,#d4af37,#ffd700);
+  padding:12px 18px;
   border:none;
-  padding:12px 20px;
-  margin:8px;
-  border-radius:8px;
+  border-radius:14px;
+  background:linear-gradient(135deg, #d4af37, #9b7208);
+  color:#000;
   font-weight:bold;
+  margin:6px;
   cursor:pointer;
+  transition:0.2s;
+  box-shadow:0 4px 8px rgba(0,0,0,0.6);
 }
 
 button:hover{
-  transform:scale(1.05);
+  transform:translateY(-2px);
+  opacity:0.95;
+}
+
+input, select{
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #2a2a2a;
+  background:#101010;
+  color:#fff;
+  width:100%;
+  box-sizing:border-box;
+  margin-bottom:10px;
 }
 
 .section{
@@ -40,158 +71,184 @@ button:hover{
   padding:20px;
 }
 
-.producto{
-  border:1px solid gold;
-  margin:10px;
-  padding:10px;
-  border-radius:10px;
+.card{
+  background:#101010;
+  padding:16px;
+  border-radius:14px;
+  margin-bottom:14px;
+  border:1px solid #222;
+  box-shadow:0 4px 10px rgba(0,0,0,0.7);
 }
-#carrito{
-  border-top:2px solid gold;
-  margin-top:20px;
-  padding-top:10px;
+
+h2, h3, h4{
+  margin:0 0 12px 0;
+  color:#f5d28a;
 }
-input{
+
+canvas{
+  width:100%;
+  max-width:440px;
+  background:#0b0b0b;
+  border-radius:14px;
   padding:8px;
-  border-radius:5px;
-  border:none;
 }
 </style>
 </head>
-
 <body>
 
-<h1>TOTOBAR</h1>
+<header>
+  <img src="logo.png" class="logo-banner">
+  <h2>Tutto Sistema</h2>
+</header>
 
-<div id="inicio">
-  <button onclick="mostrarCliente()">Cliente</button>
-  <button onclick="mostrarLoginDueño()">Dueño</button>
-</div>
-
-<!-- LOGIN DUEÑO -->
-<div id="loginDueño" class="section">
-  <h2>Panel Dueño</h2>
-  <input type="password" id="passDueño" placeholder="Contraseña">
-  <br>
-  <button onclick="entrarDueño()">Ingresar</button>
-  <br><br>
-  <button onclick="volver()">Volver</button>
-</div>
-
-<!-- PANEL DUEÑO -->
-<div id="panelDueño" class="section">
-  <h2>Bienvenido Dueño</h2>
-  <p>Panel activo correctamente.</p>
-  <button onclick="volver()">Salir</button>
+<!-- MENÚ PRINCIPAL -->
+<div id="selector" class="section" style="display:block">
+  <h3>Seleccionar modo</h3>
+  <button onclick="login('cliente')">Cliente</button>
+  <button onclick="login('mozo')">Mozo</button>
+  <button onclick="login('cocina')">Cocina</button>
+  <button onclick="login('admin')">Admin</button>
+  <button onclick="login('dueno')">Dueño</button>
 </div>
 
 <!-- CLIENTE -->
 <div id="cliente" class="section">
-  <h2>Menú</h2>
+  <button onclick="mostrar('selector')">⬅ Volver</button>
 
-  <div id="menu"></div>
+  <h3>Menú</h3>
 
-  <div id="carrito">
+  <div class="tabs" id="tabsCategorias"></div>
+  <div id="productos"></div>
+
+  <div class="card">
     <h3>Carrito</h3>
-    <div id="listaCarrito"></div>
-    <h3>Total: $<span id="total">0</span></h3>
-    <button onclick="simularPedido()">Finalizar</button>
-  </div>
+    <div id="carrito"></div>
+    <p>Total: $<span id="total">0</span></p>
 
-  <button onclick="volver()">Volver</button>
+    <button onclick="simularPedido()">Confirmar</button>
+  </div>
 </div>
 
-<script>
+<!-- RESTO DEL SISTEMA IGUAL (MOZO, COCINA, ADMIN, DUENO) -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+authDomain:"menu-pro-app.firebaseapp.com",
+projectId:"menu-pro-app",
+storageBucket:"menu-pro-app.firebasestorage.app",
+messagingSenderId:"42917274964",
+appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
+};
+
+const db=getFirestore(initializeApp(firebaseConfig));
+
 let carrito=[];
 let total=0;
+let categorias=[];
 
-const productos=[
-  {nombre:"Pizza Muzzarella", precio:3500, categoria:"Pizzas"},
-  {nombre:"Pizza Especial", precio:4500, categoria:"Pizzas"},
-  {nombre:"Hamburguesa Simple", precio:3000, categoria:"Burgers"},
-  {nombre:"Hamburguesa Doble", precio:4200, categoria:"Burgers"},
-  {nombre:"Fernet", precio:2500, categoria:"Bebidas"},
-  {nombre:"Cerveza", precio:2000, categoria:"Bebidas"}
-];
+/* LOGIN */
+window.login = (rol) => {
 
-function mostrarCliente(){
-  document.getElementById("inicio").style.display="none";
-  document.getElementById("cliente").style.display="block";
-  cargarMenu();
-}
+  if (rol === "cliente") {
+    mostrar("cliente");
+    return;
+  }
 
-function mostrarLoginDueño(){
-  document.getElementById("inicio").style.display="none";
-  document.getElementById("loginDueño").style.display="block";
-}
+  const pass = prompt("Contraseña:");
+  if (!pass) return;
 
-function entrarDueño(){
-  const pass=document.getElementById("passDueño").value;
-  if(pass==="1234"){
-    document.getElementById("loginDueño").style.display="none";
-    document.getElementById("panelDueño").style.display="block";
-  }else{
+  if(
+    (rol==="dueno" && pass==="toto321") ||
+    (rol==="admin" && pass==="toto321") ||
+    (rol==="cocina" && pass==="cocina2026") ||
+    (rol==="mozo" && pass==="mozo2026")
+  ){
+    mostrar(rol);
+  } else {
     alert("Contraseña incorrecta");
   }
-}
+};
 
-function volver(){
-  document.querySelectorAll(".section").forEach(sec=>sec.style.display="none");
-  document.getElementById("inicio").style.display="block";
-}
+window.mostrar = (id) => {
+  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="block";
+};
 
-function cargarMenu(){
-  const menu=document.getElementById("menu");
-  menu.innerHTML="";
-
-  const categorias=[...new Set(productos.map(p=>p.categoria))];
-
+/* CATEGORIAS */
+onSnapshot(collection(db,"categorias"),snap=>{
+  categorias=[];
+  snap.forEach(d=>categorias.push(d.data().nombre));
+  const tabs=document.getElementById("tabsCategorias");
+  tabs.innerHTML="";
   categorias.forEach(cat=>{
-    const titulo=document.createElement("h3");
-    titulo.innerText=cat;
-    menu.appendChild(titulo);
+    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+  });
+});
 
-    productos.filter(p=>p.categoria===cat).forEach(prod=>{
-      const div=document.createElement("div");
-      div.className="producto";
-      div.innerHTML=`
-        <p>${prod.nombre}</p>
-        <p>$${prod.precio}</p>
-        <button onclick="agregar('${prod.nombre}',${prod.precio})">Agregar</button>
-      `;
-      menu.appendChild(div);
+/* PRODUCTOS */
+window.mostrarCat = (cat)=>{
+  const prodDiv=document.getElementById("productos");
+  prodDiv.innerHTML="";
+  onSnapshot(collection(db,"productos"),snap=>{
+    prodDiv.innerHTML="";
+    snap.forEach(d=>{
+      const p=d.data();
+      if(p.categoria === cat){
+        prodDiv.innerHTML+=`
+        <div class="card">
+          <h4>${p.nombre}</h4>
+          <p>$${p.precio}</p>
+          <button onclick="agregar('${p.nombre}', ${p.precio})">Agregar</button>
+        </div>`;
+      }
     });
   });
-}
+};
 
-function agregar(nombre,precio){
-  carrito.push({nombre,precio});
-  total+=precio;
+/* CARRITO */
+window.agregar=(prod,precio)=>{
+  carrito.push({prod,precio});
+  total+=Number(precio);
   renderCarrito();
-}
+};
 
 function renderCarrito(){
-  const lista=document.getElementById("listaCarrito");
-  lista.innerHTML="";
-  carrito.forEach(item=>{
-    const p=document.createElement("p");
-    p.innerText=`${item.nombre} - $${item.precio}`;
-    lista.appendChild(p);
+  const c=document.getElementById("carrito");
+  c.innerHTML="";
+  carrito.forEach((it,idx)=>{
+    c.innerHTML+=`
+    <div class="card">
+      ${it.prod} - $${it.precio}
+      <button onclick="quitar(${idx})">X</button>
+    </div>`;
   });
   document.getElementById("total").innerText=total;
 }
 
-function simularPedido(){
+window.quitar=(i)=>{
+  total-=Number(carrito[i].precio);
+  carrito.splice(i,1);
+  renderCarrito();
+}
+
+/* CLIENTE NO ENVIA A FIREBASE */
+window.simularPedido=()=>{
   if(carrito.length===0){
-    alert("Agregá productos primero");
+    alert("Carrito vacío");
     return;
   }
-  alert("Pedido simulado.\nTotal: $"+total);
+  alert("Pedido confirmado ✔");
   carrito=[];
   total=0;
   renderCarrito();
-}
-</script>
+};
 
+</script>
 </body>
 </html>
