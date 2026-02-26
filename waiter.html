@@ -1,22 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mozo</title>
+
 <style>
-/* GRID CENTRADO DE SECCIONES */
-#tabsCategorias{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:10px;
-  justify-items:center;
+body{
+  background:#050505;
+  color:#f5d28a;
+  font-family:Arial;
+  padding:14px;
 }
 
-#tabsCategorias button{
-  width:100%;
-  text-align:center;
+header{text-align:center;}
+.logo{width:180px;}
+
+h1{
+  font-size:26px;
+  margin-bottom:24px;
+}
+
+h2{
+  font-size:22px;
+  margin-bottom:14px;
 }
 
 .section{
   margin-bottom:32px;
 }
 
-/* CARDS CENTRADAS */
+/* GRID DE SECCIONES */
+#tabsCategorias{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:8px;
+}
+
 .card{
   background:#101010;
   padding:18px;
@@ -26,5 +46,293 @@
   font-size:18px;
 }
 
-/* SIN MENSAJES BLUETOOTH NI RUIDOS EXTRA */
+button{
+  padding:14px 18px;
+  font-size:18px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(145deg, #8a6a2f, #5f4a1a);
+  color:white;
+  font-weight:bold;
+  box-shadow:0 4px 12px rgba(138,106,47,0.6);
+  margin-top:10px;
+}
+
+button:active{
+  transform:scale(0.97);
+}
+
+input, textarea{
+  font-size:18px;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
+  width:100%;
+  box-sizing:border-box;
+  margin-top:8px;
+}
 </style>
+</head>
+<body>
+
+<header>
+  <img src="logo.png" class="logo">
+  <h1>Panel Mozo</h1>
+</header>
+
+<!-- TOMAR PEDIDO -->
+<section class="section card">
+  <h2>Tomar pedido</h2>
+
+  <div id="tabsCategorias"></div>
+  <div id="productos"></div>
+
+  <h3>Pedido</h3>
+  <div id="carrito"></div>
+  <p>Total: $<span id="total">0</span></p>
+
+  <input id="mesa" placeholder="Número de mesa">
+  <textarea id="nota" placeholder="Nota para cocina"></textarea>
+
+  <button onclick="enviarPedido()">Enviar a cocina</button>
+</section>
+
+<!-- PEDIDOS PENDIENTES DEL CLIENTE -->
+<section class="section">
+  <h2>Pedidos pendientes</h2>
+  <div id="pendientes"></div>
+</section>
+
+<!-- PEDIDOS EN PROCESO / LISTOS -->
+<section class="section">
+  <h2>Estado de mesas</h2>
+  <div id="mesas"></div>
+</section>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  updateDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const firebaseConfig = {
+ apiKey:"TU_API_KEY",
+ authDomain:"menu-pro-app.firebaseapp.com",
+ projectId:"menu-pro-app",
+ storageBucket:"menu-pro-app.firebasestorage.app",
+ messagingSenderId:"42917274964",
+ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let carrito = [];
+let total = 0;
+let categorias = [];
+
+/* SONIDO */
+function sonido(){
+  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+}
+
+/* NOTIFICACIÓN */
+function notificar(mensaje){
+  if("Notification" in window){
+    Notification.requestPermission().then(p=>{
+      if(p === "granted") new Notification(mensaje);
+    });
+  }
+}
+
+/* VIBRAR */
+function vibrar(){
+  if("vibrate" in navigator){
+    navigator.vibrate([200,100,200]);
+  }
+}
+
+/* CLICK SONIDO */
+document.addEventListener("click", e=>{
+ if(e.target.tagName==="BUTTON") sonido();
+});
+
+/* CATEGORÍAS */
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"), snap=>{
+    categorias = [];
+    snap.forEach(d => categorias.push(d.data().nombre));
+    renderTabs();
+  });
+}
+
+function renderTabs(){
+  const tabs = document.getElementById("tabsCategorias");
+  tabs.innerHTML = "";
+  categorias.forEach(cat=>{
+    tabs.innerHTML += `<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+  });
+}
+
+/* PRODUCTOS */
+window.mostrarCat = (cat) => {
+  const prod = document.getElementById("productos");
+  prod.innerHTML = "";
+
+  onSnapshot(collection(db,"productos"), snap=>{
+    prod.innerHTML = "";
+    snap.forEach(d=>{
+      const p = d.data();
+      if(p.categoria === cat){
+        prod.innerHTML += `
+        <div class="card">
+          <h3>${p.nombre}</h3>
+          <p>$${p.precio}</p>
+          <button onclick="agregar('${p.nombre}',${p.precio})">
+            Agregar
+          </button>
+        </div>`;
+      }
+    });
+  });
+};
+
+/* CARRITO */
+window.agregar = (prod, precio) => {
+  carrito.push({prod, precio});
+  total += precio;
+  renderCarrito();
+};
+
+function renderCarrito(){
+  const c = document.getElementById("carrito");
+  c.innerHTML = "";
+  carrito.forEach((it, idx)=>{
+    c.innerHTML += `
+    <div class="card">
+      ${it.prod} - $${it.precio}
+      <button onclick="quitar(${idx})">X</button>
+    </div>`;
+  });
+  document.getElementById("total").innerText = total;
+}
+
+window.quitar = (i) => {
+  total -= carrito[i].precio;
+  carrito.splice(i,1);
+  renderCarrito();
+};
+
+/* ENVIAR PEDIDO (mozo) */
+window.enviarPedido = async () => {
+  if(carrito.length === 0) return alert("Carrito vacío");
+
+  await addDoc(collection(db,"pedidos"),{
+    items: carrito,
+    total,
+    mesa: document.getElementById("mesa").value,
+    nota: document.getElementById("nota").value,
+    estado: "pendiente_mozo",
+    creadoPor: "cliente",
+    createdAt: new Date()
+  });
+
+  carrito = [];
+  total = 0;
+  renderCarrito();
+  document.getElementById("nota").value = "";
+
+  // pantalla verde cuando el MOZO envía a cocina
+  document.body.style.background = "#2ecc71";
+  document.body.innerHTML = `
+    <h1 style="text-align:center; color:white; margin-top:40vh;">
+      Pedido enviado ✔
+    </h1>
+  `;
+  setTimeout(()=>location.reload(),2000);
+};
+
+/* PEDIDOS CLIENTE → CONFIRMAR (solo esta parte) */
+onSnapshot(collection(db,"pedidos"), snap=>{
+  const pend = document.getElementById("pendientes");
+  const cont = document.getElementById("mesas");
+
+  pend.innerHTML = "";
+  cont.innerHTML = "";
+
+  snap.forEach(d=>{
+    const data = d.data();
+
+    // SOLO confirmar cuando viene del cliente
+    if(data.creadoPor === "cliente" && data.estado === "pendiente_mozo"){
+      pend.innerHTML += `
+      <div class="card">
+        <h3>Mesa: ${data.mesa || "sin mesa"}</h3>
+        <p>Total: $${data.total}</p>
+        <p>Nota: ${data.nota || "sin nota"}</p>
+
+        <input id="mesa-${d.id}" placeholder="Asignar mesa">
+        <button onclick="confirmar('${d.id}')">Confirmar pedido</button>
+      </div>`;
+    }
+
+    // estado de cocina / listo / cobro
+    if(data.estado && data.estado !== "pagado"){
+      cont.innerHTML += `
+      <div class="card">
+        <h3>Mesa ${data.mesa}</h3>
+        <p><strong>Estado:</strong> ${data.estado}</p>
+        <p><strong>Total:</strong> $${data.total}</p>
+        <p><strong>Items:</strong><br>
+          ${(data.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+        </p>
+
+        <input id="cobro-${d.id}" placeholder="Nombre del mozo que cobra">
+        <button onclick="cobrar('${d.id}')">💲 Cobrar</button>
+      </div>`;
+    }
+
+    if(data.estado === "listo"){
+      notificar("Pedido listo mesa " + data.mesa);
+      vibrar();
+    }
+  });
+});
+
+/* CONFIRMAR (cliente → cocina) */
+window.confirmar = async (id) => {
+  const m = document.getElementById(`mesa-${id}`).value;
+
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"en_cocina",
+    mesa: m || ""
+  });
+
+  notificar("Pedido confirmado → cocina");
+  vibrar();
+};
+
+/* COBRAR (solo aquí pide nombre) */
+window.cobrar = async (id) => {
+  const mozoCobro = document.getElementById(`cobro-${id}`).value;
+  if(!mozoCobro) return alert("Ingrese nombre del mozo");
+
+  await updateDoc(doc(db,"pedidos",id),{
+    estado:"pagado",
+    mozoCobro
+  });
+
+  vibrar();
+};
+
+cargarCategorias();
+</script>
+</body>
+</html>
