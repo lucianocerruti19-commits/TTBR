@@ -1,228 +1,207 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tutto Sistema</title>
-
-<style>
-body{
-  margin:0;
-  background:#050505;
-  color:#f5d28a;
-  font-family:Arial, sans-serif;
-}
-
-header{
-  text-align:center;
-  padding:28px 10px;
-  background:#0b0b0b;
-  border-bottom:3px solid #d4af37;
-  box-shadow:0 6px 14px rgba(0,0,0,0.8);
-}
-
-.logo-banner{
-  width:240px;
-  display:block;
-  margin:0 auto;
-}
-
-.section{
-  display:none;
-  padding:20px;
-}
-
-button{
-  padding:12px 18px;
-  border:none;
-  border-radius:14px;
-  background:linear-gradient(135deg, #d4af37, #9b7208);
-  color:#000;
-  font-weight:bold;
-  margin:6px;
-  cursor:pointer;
-  box-shadow:0 4px 8px rgba(0,0,0,0.6);
-}
-
-.card{
-  background:#101010;
-  padding:16px;
-  border-radius:14px;
-  margin-bottom:14px;
-  border:1px solid #222;
-  box-shadow:0 4px 10px rgba(0,0,0,0.7);
-}
-</style>
-</head>
-<body>
-
-<header>
-  <img src="logo.png" class="logo-banner">
-  <h2>Tutto Sistema</h2>
-</header>
-
-<!-- MENU -->
-<section id="menu" class="section" style="display:block">
-  <h3>Seleccionar rol</h3>
-  <button onclick="mostrar('cliente')">Cliente</button>
-  <button onclick="login('mozo')">Mozo</button>
-  <button onclick="login('cocina')">Cocina</button>
-  <button onclick="login('admin')">Admin</button>
-  <button onclick="login('dueno')">Dueño</button>
-</section>
-
-<!-- CLIENTE -->
-<section id="cliente" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <h3>Menú</h3>
-  <div id="tabsCategorias"></div>
-  <div id="productos"></div>
-  <div class="card">
-    <h3>Carrito</h3>
-    <div id="carrito"></div>
-    <p>Total: $<span id="total">0</span></p>
-    <button onclick="enviarPedido()">Enviar pedido</button>
-  </div>
-</section>
-
-<!-- MOZO -->
-<section id="mozo" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="waiter.html" style="width:100%; height:85vh; border:none;"></iframe>
-</section>
-
-<!-- COCINA -->
-<section id="cocina" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="kitchen.html" style="width:100%; height:85vh; border:none;"></iframe>
-</section>
-
-<!-- ADMIN -->
-<section id="admin" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="admin.html" style="width:100%; height:85vh; border:none;"></iframe>
-</section>
-
-<!-- DUEÑO -->
-<section id="dueno" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="dueño.html" style="width:100%; height:85vh; border:none;"></iframe>
-</section>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
-const firebaseConfig = {
- apiKey:"TU_API_KEY",
- authDomain:"menu-pro-app.firebaseapp.com",
- projectId:"menu-pro-app",
- storageBucket:"menu-pro-app.firebasestorage.app",
- messagingSenderId:"42917274964",
- appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
-};
-
-initializeApp(firebaseConfig);
-const db = getFirestore();
-
-window.login = function(rol){
-  const pass = prompt("Contraseña:");
-  if(!pass) return;
-
-  if(
-    (rol==="mozo" && pass==="mozo2026") ||
-    (rol==="cocina" && pass==="cocina2026") ||
-    (rol==="admin" && pass==="toto321") ||
-    (rol==="dueno" && pass==="toto321")
-  ){
-    mostrar(rol);
-  } else {
-    alert("Contraseña incorrecta");
-  }
-};
-
-window.mostrar = function(id){
-  document.querySelectorAll(".section").forEach(s=>{
-    s.style.display="none";
-  });
-  const sec = document.getElementById(id);
-  if(sec){
-    sec.style.display="block";
-    window.scrollTo(0,0);
-  }
-};
-
-/* CLIENTE */
-onSnapshot(collection(db,"categorias"),snap=>{
- const tabs=document.getElementById("tabsCategorias");
- tabs.innerHTML="";
- snap.forEach(d=>{
-  const cat=d.data().nombre;
-  tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
- });
-});
-
-window.mostrarCat = function(cat){
- const prod=document.getElementById("productos");
- prod.innerHTML="";
- onSnapshot(collection(db,"productos"),snap=>{
-  prod.innerHTML="";
-  snap.forEach(d=>{
-    const p=d.data();
-    if(p.categoria===cat){
-      prod.innerHTML+=`
-      <div class="card">
-        <h4>${p.nombre}</h4>
-        <p>$${p.precio}</p>
-        <button onclick="agregar('${p.nombre}',${p.precio})">Agregar</button>
-      </div>`;
-    }
-  });
- });
-};
-
-let carrito=[];
-let total=0;
-
-window.agregar=function(prod,precio){
- carrito.push({prod,precio});
- total+=precio;
- renderCarrito();
-};
-
-function renderCarrito(){
- const c=document.getElementById("carrito");
- c.innerHTML="";
- carrito.forEach((it,idx)=>{
-  c.innerHTML+=`
-  <div class="card">
-    ${it.prod} - $${it.precio}
-    <button onclick="quitar(${idx})">X</button>
-  </div>`;
- });
- document.getElementById("total").innerText=total;
-}
-
-window.quitar=function(i){
- total-=carrito[i].precio;
- carrito.splice(i,1);
- renderCarrito();
-};
-
-window.enviarPedido=async function(){
- if(carrito.length===0) return alert("Carrito vacío");
-
- await addDoc(collection(db,"pedidos"),{
-   items:carrito,
-   total,
-   mesa:"",
-   estado:"pendiente_mozo",
-   createdAt:new Date(),
-   creadoPor:"cliente"
- });
-
- carrito=[];
- total=0;
- renderCarrito();
-
- alert("Pedido
+<!DOCTYPE html>  <html lang="es">  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+<title>Tutto Sistema</title>  <style>  
+body{  
+  margin:0;  
+  background:#050505;  
+  color:#f5d28a;  
+  font-family:Arial, sans-serif;  
+}  
+  
+header{  
+  text-align:center;  
+  padding:28px 10px;  
+  background:#0b0b0b;  
+  border-bottom:3px solid #d4af37;  
+  box-shadow:0 6px 14px rgba(0,0,0,0.8);  
+}  
+  
+.logo-banner{  
+  width:240px;  
+  display:block;  
+  margin:0 auto;  
+}  
+  
+.section{  
+  display:none;  
+  padding:20px;  
+}  
+  
+button{  
+  padding:12px 18px;  
+  border:none;  
+  border-radius:14px;  
+  background:linear-gradient(135deg, #d4af37, #9b7208);  
+  color:#000;  
+  font-weight:bold;  
+  margin:6px;  
+  cursor:pointer;  
+  box-shadow:0 4px 8px rgba(0,0,0,0.6);  
+}  
+  
+.card{  
+  background:#101010;  
+  padding:16px;  
+  border-radius:14px;  
+  margin-bottom:14px;  
+  border:1px solid #222;  
+  box-shadow:0 4px 10px rgba(0,0,0,0.7);  
+}  
+</style>  </head>  
+<body>  <header>  
+  <img src="logo.png" class="logo-banner">  
+  <h2>Tutto Sistema</h2>  
+</header>  <!-- MENU -->  <section id="menu" class="section" style="display:block">  
+  <h3>Seleccionar rol</h3>  
+  <button onclick="mostrar('cliente')">Cliente</button>  
+  <button onclick="login('mozo')">Mozo</button>  
+  <button onclick="login('cocina')">Cocina</button>  
+  <button onclick="login('admin')">Admin</button>  
+  <button onclick="login('dueno')">Dueño</button>  
+</section>  <!-- CLIENTE -->  <section id="cliente" class="section">  
+  <button onclick="mostrar('menu')">⬅ Volver</button>    <h3>Menú</h3>  
+  <div id="tabsCategorias"></div>  
+  <div id="productos"></div>    <div class="card">  
+    <h3>Carrito</h3>  
+    <div id="carrito"></div>  
+    <p>Total: $<span id="total">0</span></p>  
+    <button onclick="enviarPedido()">Enviar pedido</button>  
+  </div>  
+</section>  <!-- MOZO -->  <section id="mozo" class="section">  
+  <button onclick="mostrar('menu')">⬅ Volver</button>  
+  <iframe src="waiter.html" style="width:100%; height:85vh; border:none;"></iframe>  
+</section>  <!-- COCINA -->  <section id="cocina" class="section">  
+  <button onclick="mostrar('menu')">⬅ Volver</button>  
+  <iframe src="kitchen.html" style="width:100%; height:85vh; border:none;"></iframe>  
+</section>  <!-- ADMIN -->  <section id="admin" class="section">  
+  <button onclick="mostrar('menu')">⬅ Volver</button>  
+  <iframe src="admin.html" style="width:100%; height:85vh; border:none;"></iframe>  
+</section>  <!-- DUEÑO -->  <section id="dueño" class="section">  
+  <button onclick="mostrar('menu')">⬅ Volver</button>  
+  <iframe src="dueño.html" style="width:100%; height:85vh; border:none;"></iframe>  
+</section>  <script type="module">  
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";  
+import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";  
+  
+const firebaseConfig = {  
+ apiKey:"TU_API_KEY",  
+ authDomain:"menu-pro-app.firebaseapp.com",  
+ projectId:"menu-pro-app",  
+ storageBucket:"menu-pro-app.firebasestorage.app",  
+ messagingSenderId:"42917274964",  
+ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"  
+};  
+  
+initializeApp(firebaseConfig);  
+const db = getFirestore();  
+  
+/* LOGIN */  
+window.login = function(rol){  
+  const pass = prompt("Contraseña:");  
+  if(!pass) return;  
+  
+  if(  
+    (rol==="mozo" && pass==="mozo2026") ||  
+    (rol==="cocina" && pass==="cocina2026") ||  
+    (rol==="admin" && pass==="toto321") ||  
+    (rol==="dueno" && pass==="toto321")  
+  ){  
+    mostrar(rol);  
+  } else {  
+    alert("Contraseña incorrecta");  
+  }  
+};  
+  
+/* MOSTRAR */  
+window.mostrar = function(id){  
+  document.querySelectorAll(".section").forEach(s=>{  
+    s.style.display="none";  
+  });  
+  const sec = document.getElementById(id);  
+  if(sec){  
+    sec.style.display="block";  
+    window.scrollTo(0,0);  
+  }  
+};  
+  
+/* CLIENTE - CATEGORIAS */  
+onSnapshot(collection(db,"categorias"),snap=>{  
+ const tabs=document.getElementById("tabsCategorias");  
+ tabs.innerHTML="";  
+ snap.forEach(d=>{  
+  const cat=d.data().nombre;  
+  tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;  
+ });  
+});  
+  
+/* PRODUCTOS */  
+window.mostrarCat = function(cat){  
+ const prod=document.getElementById("productos");  
+ prod.innerHTML="";  
+ onSnapshot(collection(db,"productos"),snap=>{  
+  prod.innerHTML="";  
+  snap.forEach(d=>{  
+    const p=d.data();  
+    if(p.categoria===cat){  
+      prod.innerHTML+=`  
+      <div class="card">  
+        <h4>${p.nombre}</h4>  
+        <p>$${p.precio}</p>  
+        <button onclick="agregar('${p.nombre}',${p.precio})">Agregar</button>  
+      </div>`;  
+    }  
+  });  
+ });  
+};  
+  
+/* CARRITO */  
+let carrito=[];  
+let total=0;  
+  
+window.agregar=function(prod,precio){  
+ carrito.push({prod,precio});  
+ total+=precio;  
+ renderCarrito();  
+};  
+  
+function renderCarrito(){  
+ const c=document.getElementById("carrito");  
+ c.innerHTML="";  
+ carrito.forEach((it,idx)=>{  
+  c.innerHTML+=`  
+  <div class="card">  
+    ${it.prod} - $${it.precio}  
+    <button onclick="quitar(${idx})">X</button>  
+  </div>`;  
+ });  
+ document.getElementById("total").innerText=total;  
+}  
+  
+window.quitar=function(i){  
+ total-=carrito[i].precio;  
+ carrito.splice(i,1);  
+ renderCarrito();  
+};  
+  
+window.enviarPedido=async function(){  
+ if(carrito.length===0) return alert("Carrito vacío");  
+  
+ await addDoc(collection(db,"pedidos"),{  
+   items:carrito,  
+   total,  
+   mesa:"",  
+   estado:"pendiente_mozo",  
+   createdAt:new Date(),  
+   creadoPor:"cliente"  
+ });  
+  
+ carrito=[];  
+ total=0;  
+ renderCarrito();  
+  
+ alert("Pedido enviado al mozo");  
+};  
+</script>  </body>  
+</html> 
