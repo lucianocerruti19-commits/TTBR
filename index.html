@@ -61,9 +61,7 @@ button{
   <h2>Tutto Sistema</h2>
 </header>
 
-<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-
-<!-- MENU PRINCIPAL -->
+<!-- MENU -->
 <section id="menu" class="section" style="display:block">
   <h3>Seleccionar rol</h3>
   <button onclick="mostrar('cliente')">Cliente</button>
@@ -78,180 +76,71 @@ button{
   <button onclick="mostrar('menu')">⬅ Volver</button>
 
   <h3>Menú</h3>
-
-  <div class="tabs" id="tabsCategorias"></div>
-
+  <div id="tabsCategorias"></div>
   <div id="productos"></div>
 
   <div class="card">
     <h3>Carrito</h3>
     <div id="carrito"></div>
     <p>Total: $<span id="total">0</span></p>
-    <button onclick="enviarPedido()">Enviar pedido (mozo lo procesa)</button>
+    <button onclick="enviarPedido()">Enviar pedido</button>
   </div>
 </section>
 
-<!-- ADMIN -->
-<section id="admin" class="section">
-  <button onclick="guardarScroll(); mostrar('menu')">⬅ Volver</button>
-  <iframe src="admin.html" style="width:100%; height:80vh; border:none;"></iframe>
-</section>
-
-<!-- COCINA -->
-<section id="cocina" class="section">
-  <button onclick="guardarScroll(); mostrar('menu')">⬅ Volver</button>
-  <iframe src="cocina.html" style="width:100%; height:80vh; border:none;"></iframe>
-</section>
-
-<!-- MOZO -->
+<!-- PANEL MOZO -->
 <section id="mozo" class="section">
-  <button onclick="guardarScroll(); mostrar('menu')">⬅ Volver</button>
-  <iframe src="mozo.html" style="width:100%; height:80vh; border:none;"></iframe>
+  <button onclick="mostrar('menu')">⬅ Volver</button>
+  <iframe src="waiter.html" style="width:100%; height:85vh; border:none;"></iframe>
 </section>
 
-<!-- DUEÑO -->
+<!-- PANEL COCINA -->
+<section id="cocina" class="section">
+  <button onclick="mostrar('menu')">⬅ Volver</button>
+  <iframe src="kitchen.html" style="width:100%; height:85vh; border:none;"></iframe>
+</section>
+
+<!-- PANEL ADMIN -->
+<section id="admin" class="section">
+  <button onclick="mostrar('menu')">⬅ Volver</button>
+  <iframe src="admin.html" style="width:100%; height:85vh; border:none;"></iframe>
+</section>
+
+<!-- PANEL DUEÑO -->
 <section id="dueno" class="section">
-  <button onclick="guardarScroll(); mostrar('menu')">⬅ Volver</button>
-  <iframe src="dueno.html" style="width:100%; height:80vh; border:none;"></iframe>
+  <button onclick="mostrar('menu')">⬅ Volver</button>
+  <iframe src="dueno.html" style="width:100%; height:85vh; border:none;"></iframe>
 </section>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
-const firebaseConfig = {
- apiKey:"TU_API_KEY",
- authDomain:"menu-pro-app.firebaseapp.com",
- projectId:"menu-pro-app",
- storageBucket:"menu-pro-app.firebasestorage.app",
- messagingSenderId:"42917274964",
- appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
-};
-
-initializeApp(firebaseConfig);
-const db = getFirestore();
-
-/* SONIDO */
-document.addEventListener("click", e=>{
- if(e.target.tagName==="BUTTON"){
-  document.getElementById("click").play();
- }
-});
-
+<script>
 /* LOGIN */
-window.login = (rol)=>{
- const pass = prompt("Contraseña:");
- if(!pass) return;
+function login(rol){
+  const pass = prompt("Contraseña:");
+  if(!pass) return;
 
- if(
-   (rol==="mozo" && pass==="mozo2026") ||
-   (rol==="cocina" && pass==="cocina2026") ||
-   (rol==="admin" && pass==="toto321") ||
-   (rol==="dueno" && pass==="toto321")
- ){
-   mostrar(rol);
- } else {
-   alert("Contraseña incorrecta");
- }
-};
+  if(
+    (rol==="mozo" && pass==="mozo2026") ||
+    (rol==="cocina" && pass==="cocina2026") ||
+    (rol==="admin" && pass==="toto321") ||
+    (rol==="dueno" && pass==="toto321")
+  ){
+    mostrar(rol);
+  } else {
+    alert("Contraseña incorrecta");
+  }
+}
 
 /* MOSTRAR SECCION */
-window.mostrar = (id)=>{
- document.querySelectorAll(".section").forEach(s=>s.style.display="none");
- document.getElementById(id).style.display="block";
- restaurarScroll(id);
-};
-
-/* SCROLL PERSISTENTE */
-function guardarScroll(){
- const id = document.querySelector(".section[style*='block']").id;
- sessionStorage.setItem("scroll_"+id, window.scrollY);
-}
-
-function restaurarScroll(id){
- const pos = sessionStorage.getItem("scroll_"+id);
- if(pos) window.scrollTo(0, parseInt(pos));
-}
-
-/* CLIENTE CON CATEGORIAS */
-onSnapshot(collection(db,"categorias"),snap=>{
- const tabs=document.getElementById("tabsCategorias");
- tabs.innerHTML="";
- snap.forEach(d=>{
-  const cat = d.data().nombre;
-  tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
- });
-});
-
-/* PRODUCTOS POR CATEGORIA */
-window.mostrarCat = (cat)=>{
- const prod=document.getElementById("productos");
- prod.innerHTML="";
-
- onSnapshot(collection(db,"productos"),snap=>{
-  prod.innerHTML="";
-  snap.forEach(d=>{
-    const p = d.data();
-    if(p.categoria === cat){
-      prod.innerHTML+=`
-      <div class="card">
-        <h4>${p.nombre}</h4>
-        <p>$${p.precio}</p>
-        <button onclick="agregar('${p.nombre}',${p.precio})">Agregar</button>
-      </div>`;
-    }
-  });
- });
-};
-
-/* CARRITO */
-let carrito=[];
-let total=0;
-
-window.agregar = (prod,precio)=>{
- carrito.push({prod,precio});
- total+=precio;
- renderCarrito();
-};
-
-function renderCarrito(){
- const c=document.getElementById("carrito");
- c.innerHTML="";
- carrito.forEach((it,idx)=>{
-  c.innerHTML+=`
-  <div class="card">
-    ${it.prod} - $${it.precio}
-    <button onclick="quitar(${idx})">X</button>
-  </div>`;
- });
- document.getElementById("total").innerText=total;
-}
-
-window.quitar = (i)=>{
- total-=carrito[i].precio;
- carrito.splice(i,1);
- renderCarrito();
-};
-
-/* ENVIAR PEDIDO (flujo mozo) */
-window.enviarPedido = async () => {
-  if(carrito.length === 0) return alert("Carrito vacío");
-
-  await addDoc(collection(db,"pedidos"),{
-    items: carrito,
-    total,
-    mesa: "",
-    estado: "pendiente_mozo",
-    createdAt: new Date(),
-    creadoPor: "cliente"
+function mostrar(id){
+  document.querySelectorAll(".section").forEach(s=>{
+    s.style.display="none";
   });
 
-  carrito = [];
-  total = 0;
-  renderCarrito();
-
-  alert("Pedido enviado al mozo");
-};
+  const sec = document.getElementById(id);
+  if(sec){
+    sec.style.display="block";
+    window.scrollTo(0,0);
+  }
+}
 </script>
 
 </body>
