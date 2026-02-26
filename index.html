@@ -87,33 +87,48 @@ button{
   </div>
 </section>
 
-<!-- PANEL MOZO -->
+<!-- MOZO -->
 <section id="mozo" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="waiter.html" style="width:100%; height:85vh; border:none;"></iframe>
 </section>
 
-<!-- PANEL COCINA -->
+<!-- COCINA -->
 <section id="cocina" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="kitchen.html" style="width:100%; height:85vh; border:none;"></iframe>
 </section>
 
-<!-- PANEL ADMIN -->
+<!-- ADMIN -->
 <section id="admin" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="admin.html" style="width:100%; height:85vh; border:none;"></iframe>
 </section>
 
-<!-- PANEL DUEÑO -->
+<!-- DUEÑO -->
 <section id="dueno" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
   <iframe src="dueno.html" style="width:100%; height:85vh; border:none;"></iframe>
 </section>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const firebaseConfig = {
+ apiKey:"TU_API_KEY",
+ authDomain:"menu-pro-app.firebaseapp.com",
+ projectId:"menu-pro-app",
+ storageBucket:"menu-pro-app.firebasestorage.app",
+ messagingSenderId:"42917274964",
+ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
+};
+
+initializeApp(firebaseConfig);
+const db = getFirestore();
+
 /* LOGIN */
-function login(rol){
+window.login = function(rol){
   const pass = prompt("Contraseña:");
   if(!pass) return;
 
@@ -127,21 +142,98 @@ function login(rol){
   } else {
     alert("Contraseña incorrecta");
   }
-}
+};
 
-/* MOSTRAR SECCION */
-function mostrar(id){
+/* MOSTRAR */
+window.mostrar = function(id){
   document.querySelectorAll(".section").forEach(s=>{
     s.style.display="none";
   });
-
   const sec = document.getElementById(id);
   if(sec){
     sec.style.display="block";
     window.scrollTo(0,0);
   }
+};
+
+/* CLIENTE - CATEGORIAS */
+onSnapshot(collection(db,"categorias"),snap=>{
+ const tabs=document.getElementById("tabsCategorias");
+ tabs.innerHTML="";
+ snap.forEach(d=>{
+  const cat=d.data().nombre;
+  tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+ });
+});
+
+/* PRODUCTOS */
+window.mostrarCat = function(cat){
+ const prod=document.getElementById("productos");
+ prod.innerHTML="";
+ onSnapshot(collection(db,"productos"),snap=>{
+  prod.innerHTML="";
+  snap.forEach(d=>{
+    const p=d.data();
+    if(p.categoria===cat){
+      prod.innerHTML+=`
+      <div class="card">
+        <h4>${p.nombre}</h4>
+        <p>$${p.precio}</p>
+        <button onclick="agregar('${p.nombre}',${p.precio})">Agregar</button>
+      </div>`;
+    }
+  });
+ });
+};
+
+/* CARRITO */
+let carrito=[];
+let total=0;
+
+window.agregar=function(prod,precio){
+ carrito.push({prod,precio});
+ total+=precio;
+ renderCarrito();
+};
+
+function renderCarrito(){
+ const c=document.getElementById("carrito");
+ c.innerHTML="";
+ carrito.forEach((it,idx)=>{
+  c.innerHTML+=`
+  <div class="card">
+    ${it.prod} - $${it.precio}
+    <button onclick="quitar(${idx})">X</button>
+  </div>`;
+ });
+ document.getElementById("total").innerText=total;
 }
+
+window.quitar=function(i){
+ total-=carrito[i].precio;
+ carrito.splice(i,1);
+ renderCarrito();
+};
+
+window.enviarPedido=async function(){
+ if(carrito.length===0) return alert("Carrito vacío");
+
+ await addDoc(collection(db,"pedidos"),{
+   items:carrito,
+   total,
+   mesa:"",
+   estado:"pendiente_mozo",
+   createdAt:new Date(),
+   creadoPor:"cliente"
+ });
+
+ carrito=[];
+ total=0;
+ renderCarrito();
+
+ alert("Pedido enviado al mozo");
+};
 </script>
 
 </body>
-</html>
+</html> 
