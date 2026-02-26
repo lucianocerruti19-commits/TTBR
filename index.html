@@ -2,148 +2,168 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<title>TOTOBAR</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tutto Sistema</title>
 
 <style>
 body{
   margin:0;
-  background:#050505;
-  color:#f5d28a;
-  font-family:Arial, sans-serif;
-}
-
-header{
+  font-family:Arial;
+  background:#111;
+  color:white;
   text-align:center;
-  padding:28px 10px;
-  background:#0b0b0b;
-  border-bottom:3px solid #d4af37;
-  box-shadow:0 6px 14px rgba(0,0,0,0.8);
 }
 
-.logo-banner{
-  width:240px;
-  display:block;
-  margin:0 auto;
+h1{
+  color:gold;
+  text-shadow:0 0 10px goldenrod;
 }
 
-.section{
+input,button{
+  padding:10px;
+  margin:5px;
+  border:none;
+  border-radius:8px;
+}
+
+button{
+  background:linear-gradient(45deg,gold,orange);
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.panel{
   display:none;
   padding:20px;
 }
 
-button{
-  padding:12px 18px;
-  border:none;
-  border-radius:14px;
-  background:linear-gradient(135deg, #d4af37, #9b7208);
-  color:#000;
-  font-weight:bold;
-  margin:6px;
-  cursor:pointer;
-  box-shadow:0 4px 8px rgba(0,0,0,0.6);
+.producto{
+  background:#222;
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+}
+
+.carrito{
+  background:#1a1a1a;
+  padding:15px;
+  margin-top:20px;
+  border-radius:10px;
 }
 </style>
 </head>
 <body>
 
-<header>
-  <img src="logo.png" class="logo-banner">
-  <h2>Tutto Sistema</h2>
-</header>
+<h1>TOTOBAR</h1>
 
-<!-- MENU PRINCIPAL -->
-<section id="menu" class="section" style="display:block">
-  <h3>Seleccionar rol</h3>
-  <button onclick="mostrar('cliente')">Cliente</button>
-  <button onclick="loginMozo()">Mozo</button>
-  <button onclick="loginCocina()">Cocina</button>
-  <button onclick="loginAdmin()">Admin</button>
-  <button onclick="loginDueno()">Dueño</button>
-</section>
+<!-- LOGIN -->
+<div id="login">
+  <input id="usuario" placeholder="Usuario"><br>
+  <input id="clave" type="password" placeholder="Contraseña"><br>
+  <button onclick="entrar()">Ingresar</button>
+</div>
 
-<!-- CLIENTE (INTERNO) -->
-<section id="cliente" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
+<!-- CLIENTE -->
+<div id="cliente" class="panel">
+  <h2>Menú TOTOBAR</h2>
+  <div id="menu"></div>
 
-  <h3>Panel Cliente</h3>
-
-  <div id="menuCliente">
-    <p>Acá va el menú del restaurante.</p>
+  <div class="carrito">
+    <h3>Carrito</h3>
+    <div id="listaCarrito"></div>
+    <h3>Total: $<span id="total">0</span></h3>
+    <button onclick="finalizarDemo()">Simular Pedido</button>
   </div>
-
-  <div style="margin-top:20px;">
-    <h4>Carrito</h4>
-    <div id="carrito"></div>
-    <p>Total: $<span id="total">0</span></p>
-    <button onclick="enviarPedido()">Enviar Pedido</button>
-  </div>
-</section>
-
-<!-- MOZO -->
-<section id="mozo" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="waiter.html" style="width:100%; height:85vh; border:none;"></iframe>
-</section>
-
-<!-- COCINA -->
-<section id="cocina" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="kitchen.html" style="width:100%; height:85vh; border:none;"></iframe>
-</section>
-
-<!-- ADMIN -->
-<section id="admin" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="admin.html" style="width:100%; height:85vh; border:none;"></iframe>
-</section>
-
-<!-- DUEÑO -->
-<section id="dueno" class="section">
-  <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe 
-    src="https://lucianocerruti19-commits.github.io/TTBR/due%C3%B1o.html"
-    style="width:100%; height:85vh; border:none;">
-  </iframe>
-</section>
+</div>
 
 <script>
-function mostrar(id){
-  document.querySelectorAll(".section").forEach(s=>{
-    s.style.display="none";
+const usuarios={
+  admin:{clave:"1234",link:"admin.html"},
+  dueño:{clave:"1234",link:"due%C3%B1o.html"},
+  mozo:{clave:"1234",link:"waiter.html"},
+  cocina:{clave:"1234",link:"kitchen.html"},
+  cliente:{clave:"1234",panel:"cliente"}
+};
+
+function entrar(){
+  const u=document.getElementById("usuario").value;
+  const c=document.getElementById("clave").value;
+
+  if(!usuarios[u] || usuarios[u].clave!==c){
+    alert("Datos incorrectos");
+    return;
+  }
+
+  if(u==="cliente"){
+    document.getElementById("login").style.display="none";
+    document.getElementById("cliente").style.display="block";
+    cargarMenu();
+  }else{
+    window.location.href=usuarios[u].link;
+  }
+}
+
+const productos=[
+  {nombre:"Cerveza",precio:1500},
+  {nombre:"Fernet",precio:2500},
+  {nombre:"Hamburguesa",precio:3500},
+  {nombre:"Papas",precio:2000}
+];
+
+let carrito=[];
+let total=0;
+
+function cargarMenu(){
+  const cont=document.getElementById("menu");
+  cont.innerHTML="";
+  productos.forEach(p=>{
+    cont.innerHTML+=`
+      <div class="producto">
+        <h3>${p.nombre}</h3>
+        <p>$${p.precio}</p>
+        <button onclick="agregar('${p.nombre}',${p.precio})">Agregar</button>
+      </div>
+    `;
   });
-  document.getElementById(id).style.display="block";
-  window.scrollTo(0,0);
 }
 
-function loginMozo(){
-  const pass=prompt("Contraseña:");
-  if(pass==="mozo2026") mostrar("mozo");
-  else alert("Contraseña incorrecta");
+function agregar(nombre,precio){
+  carrito.push({nombre,precio});
+  total+=precio;
+  renderCarrito();
 }
 
-function loginCocina(){
-  const pass=prompt("Contraseña:");
-  if(pass==="cocina2026") mostrar("cocina");
-  else alert("Contraseña incorrecta");
+function renderCarrito(){
+  const lista=document.getElementById("listaCarrito");
+  lista.innerHTML="";
+  carrito.forEach((p,i)=>{
+    lista.innerHTML+=`
+      <p>${p.nombre} - $${p.precio}
+      <button onclick="eliminar(${i})">❌</button></p>
+    `;
+  });
+  document.getElementById("total").innerText=total;
 }
 
-function loginAdmin(){
-  const pass=prompt("Contraseña:");
-  if(pass==="toto321") mostrar("admin");
-  else alert("Contraseña incorrecta");
+function eliminar(i){
+  total-=carrito[i].precio;
+  carrito.splice(i,1);
+  renderCarrito();
 }
 
-function loginDueno(){
-  const pass=prompt("Contraseña:");
-  if(pass==="toto321") mostrar("dueno");
-  else alert("Contraseña incorrecta");
-}
+function finalizarDemo(){
+  if(carrito.length===0){
+    alert("Agregá productos primero");
+    return;
+  }
 
-function enviarPedido(){
-  alert("Pedido enviado correctamente");
+  alert("Pedido simulado.\nTotal: $" + total);
+
+  carrito=[];
+  total=0;
+  renderCarrito();
 }
 </script>
 
 </body>
-</html> 
+</html>
