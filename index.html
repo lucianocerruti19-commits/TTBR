@@ -8,172 +8,175 @@
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
-  background:#0f0f0f;
-  color:#d4af37;
+  font-family:Arial, Helvetica, sans-serif;
+  background:black;
+  color:white;
   text-align:center;
 }
 
-.logo{
-  width:180px;
-  margin:20px auto;
-  display:block;
-}
-
-h1,h2{
-  margin:10px 0;
-}
-
-input,select,button{
-  padding:10px;
-  margin:5px;
-  border-radius:8px;
-  border:none;
-  font-size:16px;
+h1{
+  font-size:40px;
+  background:linear-gradient(45deg,#d4af37,#ffd700,#fff5b7,#d4af37);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
 }
 
 button{
-  background:#d4af37;
-  color:#000;
+  background:linear-gradient(45deg,#d4af37,#ffd700);
+  border:none;
+  padding:12px 20px;
+  margin:8px;
+  border-radius:8px;
   font-weight:bold;
   cursor:pointer;
 }
 
-.panel{
+button:hover{
+  transform:scale(1.05);
+}
+
+.section{
   display:none;
   padding:20px;
 }
 
-.card{
-  background:#1a1a1a;
+.producto{
+  border:1px solid gold;
   margin:10px;
   padding:10px;
   border-radius:10px;
 }
-
-.carrito{
+#carrito{
+  border-top:2px solid gold;
   margin-top:20px;
-  background:#1a1a1a;
-  padding:15px;
-  border-radius:10px;
+  padding-top:10px;
+}
+input{
+  padding:8px;
+  border-radius:5px;
+  border:none;
 }
 </style>
 </head>
-<body>
 
-<img src="logo.png" class="logo">
+<body>
 
 <h1>TOTOBAR</h1>
 
-<div id="login">
-  <h2>Ingresar</h2>
-  <select id="usuario">
-    <option value="cliente">Cliente</option>
-    <option value="mozo">Mozo</option>
-    <option value="cocina">Cocina</option>
-    <option value="dueno">Dueño</option>
-  </select>
-  <input type="password" id="clave" placeholder="Contraseña">
-  <button onclick="entrar()">Entrar</button>
+<div id="inicio">
+  <button onclick="mostrarCliente()">Cliente</button>
+  <button onclick="mostrarLoginDueño()">Dueño</button>
+</div>
+
+<!-- LOGIN DUEÑO -->
+<div id="loginDueño" class="section">
+  <h2>Panel Dueño</h2>
+  <input type="password" id="passDueño" placeholder="Contraseña">
+  <br>
+  <button onclick="entrarDueño()">Ingresar</button>
+  <br><br>
+  <button onclick="volver()">Volver</button>
+</div>
+
+<!-- PANEL DUEÑO -->
+<div id="panelDueño" class="section">
+  <h2>Bienvenido Dueño</h2>
+  <p>Panel activo correctamente.</p>
+  <button onclick="volver()">Salir</button>
 </div>
 
 <!-- CLIENTE -->
-<div id="cliente" class="panel">
+<div id="cliente" class="section">
   <h2>Menú</h2>
-  <div id="productos"></div>
 
-  <div class="carrito">
+  <div id="menu"></div>
+
+  <div id="carrito">
     <h3>Carrito</h3>
     <div id="listaCarrito"></div>
     <h3>Total: $<span id="total">0</span></h3>
-    <button onclick="simularPedido()">Finalizar (Demo)</button>
+    <button onclick="simularPedido()">Finalizar</button>
   </div>
-</div>
 
-<!-- MOZO -->
-<div id="mozo" class="panel">
-  <h2>Panel Mozo</h2>
-  <p>Pedidos en tiempo real...</p>
-</div>
-
-<!-- COCINA -->
-<div id="cocina" class="panel">
-  <h2>Panel Cocina</h2>
-  <p>Pedidos para preparar...</p>
-</div>
-
-<!-- DUEÑO -->
-<div id="dueno" class="panel">
-  <h2>Panel Dueño</h2>
-  <p>Estadísticas y control...</p>
+  <button onclick="volver()">Volver</button>
 </div>
 
 <script>
-const usuarios={
-  cliente:{panel:"cliente"},
-  mozo:{clave:"2222",panel:"mozo"},
-  cocina:{clave:"3333",panel:"cocina"},
-  dueno:{clave:"1111",panel:"dueno"}
-};
-
-function entrar(){
-  const u=document.getElementById("usuario").value;
-  const c=document.getElementById("clave").value;
-
-  if(!usuarios[u]){
-    alert("Datos incorrectos");
-    return;
-  }
-
-  if(u!=="cliente" && usuarios[u].clave!==c){
-    alert("Datos incorrectos");
-    return;
-  }
-
-  document.getElementById("login").style.display="none";
-  document.getElementById(usuarios[u].panel).style.display="block";
-}
-
-/* ==========================
-   SISTEMA CLIENTE (DEMO)
-========================== */
-
-const productosData=[
-  {nombre:"Cerveza",precio:1500},
-  {nombre:"Fernet",precio:2000},
-  {nombre:"Pizza Muzza",precio:4500},
-  {nombre:"Hamburguesa",precio:3800}
-];
-
 let carrito=[];
 let total=0;
 
-const productosDiv=document.getElementById("productos");
+const productos=[
+  {nombre:"Pizza Muzzarella", precio:3500, categoria:"Pizzas"},
+  {nombre:"Pizza Especial", precio:4500, categoria:"Pizzas"},
+  {nombre:"Hamburguesa Simple", precio:3000, categoria:"Burgers"},
+  {nombre:"Hamburguesa Doble", precio:4200, categoria:"Burgers"},
+  {nombre:"Fernet", precio:2500, categoria:"Bebidas"},
+  {nombre:"Cerveza", precio:2000, categoria:"Bebidas"}
+];
 
-productosData.forEach((p,i)=>{
-  const div=document.createElement("div");
-  div.className="card";
-  div.innerHTML=`
-    <h3>${p.nombre}</h3>
-    <p>$${p.precio}</p>
-    <button onclick="agregar(${i})">Agregar</button>
-  `;
-  productosDiv.appendChild(div);
-});
+function mostrarCliente(){
+  document.getElementById("inicio").style.display="none";
+  document.getElementById("cliente").style.display="block";
+  cargarMenu();
+}
 
-function agregar(i){
-  carrito.push(productosData[i]);
-  total+=productosData[i].precio;
+function mostrarLoginDueño(){
+  document.getElementById("inicio").style.display="none";
+  document.getElementById("loginDueño").style.display="block";
+}
+
+function entrarDueño(){
+  const pass=document.getElementById("passDueño").value;
+  if(pass==="1234"){
+    document.getElementById("loginDueño").style.display="none";
+    document.getElementById("panelDueño").style.display="block";
+  }else{
+    alert("Contraseña incorrecta");
+  }
+}
+
+function volver(){
+  document.querySelectorAll(".section").forEach(sec=>sec.style.display="none");
+  document.getElementById("inicio").style.display="block";
+}
+
+function cargarMenu(){
+  const menu=document.getElementById("menu");
+  menu.innerHTML="";
+
+  const categorias=[...new Set(productos.map(p=>p.categoria))];
+
+  categorias.forEach(cat=>{
+    const titulo=document.createElement("h3");
+    titulo.innerText=cat;
+    menu.appendChild(titulo);
+
+    productos.filter(p=>p.categoria===cat).forEach(prod=>{
+      const div=document.createElement("div");
+      div.className="producto";
+      div.innerHTML=`
+        <p>${prod.nombre}</p>
+        <p>$${prod.precio}</p>
+        <button onclick="agregar('${prod.nombre}',${prod.precio})">Agregar</button>
+      `;
+      menu.appendChild(div);
+    });
+  });
+}
+
+function agregar(nombre,precio){
+  carrito.push({nombre,precio});
+  total+=precio;
   renderCarrito();
 }
 
 function renderCarrito(){
   const lista=document.getElementById("listaCarrito");
   lista.innerHTML="";
-  carrito.forEach(p=>{
-    const item=document.createElement("div");
-    item.innerText=p.nombre+" - $"+p.precio;
-    lista.appendChild(item);
+  carrito.forEach(item=>{
+    const p=document.createElement("p");
+    p.innerText=`${item.nombre} - $${item.precio}`;
+    lista.appendChild(p);
   });
   document.getElementById("total").innerText=total;
 }
@@ -183,9 +186,7 @@ function simularPedido(){
     alert("Agregá productos primero");
     return;
   }
-
   alert("Pedido simulado.\nTotal: $"+total);
-
   carrito=[];
   total=0;
   renderCarrito();
