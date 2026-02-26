@@ -52,7 +52,7 @@ button{
   <h2>Tutto Sistema</h2>
 </header>
 
-<!-- MENU -->
+<!-- MENU PRINCIPAL -->
 <section id="menu" class="section" style="display:block">
   <h3>Seleccionar rol</h3>
   <button onclick="mostrar('cliente')">Cliente</button>
@@ -62,10 +62,22 @@ button{
   <button onclick="loginDueno()">Dueño</button>
 </section>
 
-<!-- CLIENTE -->
+<!-- CLIENTE (INTERNO) -->
 <section id="cliente" class="section">
   <button onclick="mostrar('menu')">⬅ Volver</button>
-  <iframe src="cliente.html" style="width:100%; height:85vh; border:none;"></iframe>
+
+  <h3>Panel Cliente</h3>
+
+  <div id="menuCliente">
+    <p>Acá va el menú del restaurante.</p>
+  </div>
+
+  <div style="margin-top:20px;">
+    <h4>Carrito</h4>
+    <div id="carrito"></div>
+    <p>Total: $<span id="total">0</span></p>
+    <button onclick="enviarPedido()">Enviar Pedido</button>
+  </div>
 </section>
 
 <!-- MOZO -->
@@ -126,6 +138,10 @@ function loginDueno(){
   const pass=prompt("Contraseña:");
   if(pass==="toto321") mostrar("dueno");
   else alert("Contraseña incorrecta");
+}
+
+function enviarPedido(){
+  alert("Pedido enviado correctamente");
 }
 </script>
 
