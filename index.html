@@ -101,7 +101,6 @@ canvas{
   <h2>Tutto Sistema</h2>
 </header>
 
-<!-- MENÚ PRINCIPAL -->
 <div id="selector" class="section" style="display:block">
   <h3>Seleccionar modo</h3>
   <button onclick="login('cliente')">Cliente</button>
@@ -111,25 +110,59 @@ canvas{
   <button onclick="login('dueno')">Dueño</button>
 </div>
 
-<!-- CLIENTE -->
+<!-- CLIENTE SOLO VISUAL -->
 <div id="cliente" class="section">
   <button onclick="mostrar('selector')">⬅ Volver</button>
-
   <h3>Menú</h3>
-
   <div class="tabs" id="tabsCategorias"></div>
   <div id="productos"></div>
-
-  <div class="card">
-    <h3>Carrito</h3>
-    <div id="carrito"></div>
-    <p>Total: $<span id="total">0</span></p>
-
-    <button onclick="simularPedido()">Confirmar</button>
-  </div>
 </div>
 
-<!-- RESTO DEL SISTEMA IGUAL (MOZO, COCINA, ADMIN, DUENO) -->
+<!-- MOZO -->
+<div id="mozo" class="section">
+  <button onclick="mostrar('selector')">⬅ Volver</button>
+  <h3>Mozo</h3>
+  <div id="mozoPedidos"></div>
+</div>
+
+<!-- COCINA -->
+<div id="cocina" class="section">
+  <button onclick="mostrar('selector')">⬅ Volver</button>
+  <h3>Cocina</h3>
+  <div id="cocinaPedidos"></div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" class="section">
+  <button onclick="mostrar('selector')">⬅ Volver</button>
+
+  <h3>Admin Productos</h3>
+
+  <input id="prodNombre" placeholder="Producto">
+  <input id="prodPrecio" placeholder="Precio">
+  <select id="prodCategoria"></select>
+
+  <button onclick="agregarProducto()">Agregar</button>
+
+  <h4>Crear nueva sección</h4>
+  <input id="nuevaCategoria" placeholder="Nombre de sección">
+  <button onclick="crearCategoria()">Crear sección</button>
+
+  <div id="listaProductos"></div>
+</div>
+
+<!-- DUENO -->
+<div id="dueno" class="section">
+  <button onclick="mostrar('selector')">⬅ Volver</button>
+  <h3>Panel Dueño</h3>
+  <div class="card">
+    <h4>Ventas</h4>
+    <p>Hoy: $<span id="vHoy">0</span></p>
+    <p>Semana: $<span id="vSemana">0</span></p>
+    <p>Mes: $<span id="vMes">0</span></p>
+  </div>
+  <canvas id="grafico"></canvas>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -138,7 +171,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebas
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
-apiKey:"AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+apiKey:"TU_API_KEY",
 authDomain:"menu-pro-app.firebaseapp.com",
 projectId:"menu-pro-app",
 storageBucket:"menu-pro-app.firebasestorage.app",
@@ -148,18 +181,74 @@ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 
 const db=getFirestore(initializeApp(firebaseConfig));
 
-let carrito=[];
-let total=0;
 let categorias=[];
 
-/* LOGIN */
-window.login = (rol) => {
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"),snap=>{
+    categorias=[];
+    snap.forEach(d=>categorias.push(d.data().nombre));
+    renderTabs();
+    cargarSelectCategorias();
+  });
+}
 
+function renderTabs(){
+  const tabs=document.getElementById("tabsCategorias");
+  tabs.innerHTML="";
+  categorias.forEach(cat=>{
+    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+  });
+}
+
+function cargarSelectCategorias(){
+  const select=document.getElementById("prodCategoria");
+  if(!select) return;
+  select.innerHTML="";
+  categorias.forEach(cat=>{
+    select.innerHTML+=`<option value="${cat}">${cat}</option>`;
+  });
+}
+
+window.mostrarCat = (cat)=>{
+  const prodDiv=document.getElementById("productos");
+  prodDiv.innerHTML="";
+  onSnapshot(collection(db,"productos"),snap=>{
+    prodDiv.innerHTML="";
+    snap.forEach(d=>{
+      const p=d.data();
+      if(p.categoria === cat){
+        prodDiv.innerHTML+=`
+        <div class="card">
+          <h4>${p.nombre}</h4>
+          <p>$${p.precio}</p>
+        </div>`;
+      }
+    });
+  });
+};
+
+window.crearCategoria=async()=>{
+  const nombre=document.getElementById("nuevaCategoria").value;
+  if(!nombre) return;
+  await addDoc(collection(db,"categorias"),{nombre});
+  document.getElementById("nuevaCategoria").value="";
+};
+
+window.agregarProducto=async()=>{
+  const nombre=document.getElementById("prodNombre").value;
+  const precio=document.getElementById("prodPrecio").value;
+  const categoria=document.getElementById("prodCategoria").value;
+  if(!nombre||!precio) return;
+  await addDoc(collection(db,"productos"),{nombre,precio,categoria});
+  document.getElementById("prodNombre").value="";
+  document.getElementById("prodPrecio").value="";
+};
+
+window.login = (rol) => {
   if (rol === "cliente") {
     mostrar("cliente");
     return;
   }
-
   const pass = prompt("Contraseña:");
   if (!pass) return;
 
@@ -180,75 +269,8 @@ window.mostrar = (id) => {
   document.getElementById(id).style.display="block";
 };
 
-/* CATEGORIAS */
-onSnapshot(collection(db,"categorias"),snap=>{
-  categorias=[];
-  snap.forEach(d=>categorias.push(d.data().nombre));
-  const tabs=document.getElementById("tabsCategorias");
-  tabs.innerHTML="";
-  categorias.forEach(cat=>{
-    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
-  });
-});
-
-/* PRODUCTOS */
-window.mostrarCat = (cat)=>{
-  const prodDiv=document.getElementById("productos");
-  prodDiv.innerHTML="";
-  onSnapshot(collection(db,"productos"),snap=>{
-    prodDiv.innerHTML="";
-    snap.forEach(d=>{
-      const p=d.data();
-      if(p.categoria === cat){
-        prodDiv.innerHTML+=`
-        <div class="card">
-          <h4>${p.nombre}</h4>
-          <p>$${p.precio}</p>
-          <button onclick="agregar('${p.nombre}', ${p.precio})">Agregar</button>
-        </div>`;
-      }
-    });
-  });
-};
-
-/* CARRITO */
-window.agregar=(prod,precio)=>{
-  carrito.push({prod,precio});
-  total+=Number(precio);
-  renderCarrito();
-};
-
-function renderCarrito(){
-  const c=document.getElementById("carrito");
-  c.innerHTML="";
-  carrito.forEach((it,idx)=>{
-    c.innerHTML+=`
-    <div class="card">
-      ${it.prod} - $${it.precio}
-      <button onclick="quitar(${idx})">X</button>
-    </div>`;
-  });
-  document.getElementById("total").innerText=total;
-}
-
-window.quitar=(i)=>{
-  total-=Number(carrito[i].precio);
-  carrito.splice(i,1);
-  renderCarrito();
-}
-
-/* CLIENTE NO ENVIA A FIREBASE */
-window.simularPedido=()=>{
-  if(carrito.length===0){
-    alert("Carrito vacío");
-    return;
-  }
-  alert("Pedido confirmado ✔");
-  carrito=[];
-  total=0;
-  renderCarrito();
-};
-
+cargarCategorias();
 </script>
+
 </body>
 </html>
