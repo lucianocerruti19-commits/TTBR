@@ -136,6 +136,14 @@ const db = getFirestore(app);
 let fechaActual = new Date().toDateString();
 let chart;
 
+/* CAMBIO AUTOMÁTICO A NUEVO DÍA (5 AM) */
+setInterval(()=>{
+  const h = new Date();
+  if(h.getHours() === 5 && h.getMinutes() === 0){
+    nuevoDia();
+  }
+}, 60000);
+
 /* ESTADÍSTICAS */
 onSnapshot(collection(db,"pedidos"), snap=>{
   let pedidos = 0;
