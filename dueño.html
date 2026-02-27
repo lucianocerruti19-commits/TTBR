@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dueño - Control Profesional</title>
+<title>Dueño - Control Total Profesional</title>
 
 <style>
 body{
@@ -27,6 +27,7 @@ h1{text-align:center;margin-bottom:20px;}
   border:1px solid #2b2b2b;
   border-radius:16px;
   padding:18px;
+  margin-bottom:15px;
 }
 
 .big{
@@ -44,21 +45,31 @@ button{
   margin:5px 5px 10px 0;
 }
 
-input[type="date"]{
+input{
   padding:8px;
   border-radius:8px;
   border:1px solid #2b2b2b;
   background:#111;
   color:white;
+  margin-bottom:10px;
+}
+
+canvas{
+  max-width:100%;
 }
 </style>
 </head>
 <body>
 
-<h1>Panel Dueño - Control Total</h1>
+<h1>Panel Dueño - Control Profesional</h1>
 
 <label>Seleccionar Fecha:</label>
 <input type="date" id="fechaFiltro">
+
+<br><br>
+
+<label>Seleccionar Mes:</label>
+<input type="month" id="mesFiltro">
 
 <div class="dashboard">
   <div class="card">💰 Vendido <div class="big">$<span id="vendido">0</span></div></div>
@@ -68,79 +79,96 @@ input[type="date"]{
 </div>
 
 <div class="card">
-  <button onclick="cerrarDia()">🔒 Cerrar Día</button>
+  <button onclick="cerrarDia()">🔒 Cerrar Caja del Día</button>
   <button onclick="exportarExcel()">📤 Exportar Excel</button>
 </div>
 
+<div class="card">
+  <h2>📊 Ventas Mensuales Acumuladas</h2>
+  <canvas id="graficoMensual"></canvas>
+</div>
+
 <div id="historial"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
- apiKey:"TU_API_KEY",
- authDomain:"menu-pro-app.firebaseapp.com",
- projectId:"menu-pro-app",
- storageBucket:"menu-pro-app.firebasestorage.app",
- messagingSenderId:"42917274964",
- appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
+  apiKey:"TU_API_KEY",
+  authDomain:"menu-pro-app.firebaseapp.com",
+  projectId:"menu-pro-app",
+  storageBucket:"menu-pro-app.firebasestorage.app",
+  messagingSenderId:"42917274964",
+  appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-const fechaInput=document.getElementById("fechaFiltro");
-const hoyISO=new Date().toISOString().split("T")[0];
-fechaInput.value=hoyISO;
+const fechaInput = document.getElementById("fechaFiltro");
+const mesInput = document.getElementById("mesFiltro");
 
-let pedidosGlobal=[];
+const hoy = new Date();
+fechaInput.value = hoy.toISOString().split("T")[0];
+mesInput.value = hoy.toISOString().slice(0,7);
+
+let pedidosGlobal = [];
+let chartMensual;
 
 onSnapshot(collection(db,"pedidos"), snap=>{
-  pedidosGlobal=[];
+  pedidosGlobal = [];
   snap.forEach(d=>{
-    pedidosGlobal.push({...d.data(),id:d.id});
+    pedidosGlobal.push({...d.data(), id:d.id});
   });
   filtrarPorFecha();
+  generarGraficoMensual();
 });
 
-fechaInput.addEventListener("change",filtrarPorFecha);
+fechaInput.addEventListener("change", filtrarPorFecha);
+mesInput.addEventListener("change", generarGraficoMensual);
 
 function filtrarPorFecha(){
 
-  const fechaSeleccionada=fechaInput.value;
+  const fechaSeleccionada = fechaInput.value;
 
   let vendido=0;
   let cobrado=0;
   let pedidos=0;
   let pagados=0;
 
-  const historial=document.getElementById("historial");
+  const historial = document.getElementById("historial");
   historial.innerHTML="";
 
   pedidosGlobal.forEach(p=>{
 
     if(!p.createdAt) return;
 
-    const fecha=new Date(p.createdAt.seconds*1000);
-    const iso=fecha.toISOString().split("T")[0];
+    const fecha = new Date(p.createdAt.seconds*1000);
+    const iso = fecha.toISOString().split("T")[0];
 
-    if(iso===fechaSeleccionada){
+    if(iso === fechaSeleccionada){
 
       pedidos++;
-      vendido+=p.total||0;
 
-      if(p.estado==="pagado"||p.estado==="cerrado"){
-        cobrado+=p.total||0;
-        pagados++;
+      if(!p.cierreCaja){
+        vendido += p.total || 0;
+
+        if(p.estado === "pagado"){
+          cobrado += p.total || 0;
+          pagados++;
+        }
       }
 
-      historial.innerHTML+=`
+      historial.innerHTML += `
       <div class="card">
         <strong>Mesa:</strong> ${p.mesa}<br>
         <strong>Total:</strong> $${p.total}<br>
         <strong>Estado:</strong> ${p.estado}<br>
-        <strong>Mozo Cobró:</strong> ${p.mozoCobro||"-"}<br>
+        <strong>Cierre:</strong> ${p.cierreCaja ? "Cerrado ✔" : "Abierto"}<br>
+        <strong>Mozo Cobró:</strong> ${p.mozoCobro || "-"}<br>
         <strong>Hora:</strong> ${fecha.toLocaleTimeString()}<br>
         <strong>Items:</strong><br>
         ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
@@ -148,55 +176,97 @@ function filtrarPorFecha(){
     }
   });
 
-  document.getElementById("vendido").innerText=vendido;
-  document.getElementById("cobrado").innerText=cobrado;
-  document.getElementById("pedidos").innerText=pedidos;
-  document.getElementById("pagados").innerText=pagados;
+  document.getElementById("vendido").innerText = vendido;
+  document.getElementById("cobrado").innerText = cobrado;
+  document.getElementById("pedidos").innerText = pedidos;
+  document.getElementById("pagados").innerText = pagados;
 }
 
-window.cerrarDia=async()=>{
-  if(!confirm("Cerrar día seleccionado?")) return;
+window.cerrarDia = async ()=>{
+  if(!confirm("Cerrar caja del día seleccionado?")) return;
 
-  const fechaSeleccionada=fechaInput.value;
+  const fechaSeleccionada = fechaInput.value;
 
   pedidosGlobal.forEach(async p=>{
     if(!p.createdAt) return;
 
-    const fecha=new Date(p.createdAt.seconds*1000);
-    const iso=fecha.toISOString().split("T")[0];
+    const fecha = new Date(p.createdAt.seconds*1000);
+    const iso = fecha.toISOString().split("T")[0];
 
-    if(iso===fechaSeleccionada && p.estado==="pagado"){
+    if(iso === fechaSeleccionada && p.estado === "pagado"){
       await updateDoc(doc(db,"pedidos",p.id),{
-        estado:"cerrado"
+        cierreCaja:true
       });
     }
   });
 
-  alert("Día cerrado correctamente ✔");
+  alert("Caja cerrada correctamente ✔");
 };
 
-window.exportarExcel=()=>{
-  const fechaSeleccionada=fechaInput.value;
-  let csv="Mesa,Total,Estado,MozoCobro,Hora\n";
+window.exportarExcel = ()=>{
+  const fechaSeleccionada = fechaInput.value;
+  let csv = "Mesa,Total,Estado,Cierre,MozoCobro,Hora\n";
 
   pedidosGlobal.forEach(p=>{
     if(!p.createdAt) return;
 
-    const fecha=new Date(p.createdAt.seconds*1000);
-    const iso=fecha.toISOString().split("T")[0];
+    const fecha = new Date(p.createdAt.seconds*1000);
+    const iso = fecha.toISOString().split("T")[0];
 
-    if(iso===fechaSeleccionada){
-      csv+=`${p.mesa},${p.total},${p.estado},${p.mozoCobro||""},${fecha.toLocaleTimeString()}\n`;
+    if(iso === fechaSeleccionada){
+      csv += `${p.mesa},${p.total},${p.estado},${p.cierreCaja?"Cerrado":"Abierto"},${p.mozoCobro||""},${fecha.toLocaleTimeString()}\n`;
     }
   });
 
-  const blob=new Blob([csv],{type:"text/csv"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download=`ventas_${fechaSeleccionada}.csv`;
+  const blob = new Blob([csv],{type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ventas_${fechaSeleccionada}.csv`;
   a.click();
 };
+
+function generarGraficoMensual(){
+
+  const mesSeleccionado = mesInput.value;
+  if(!mesSeleccionado) return;
+
+  let datosPorDia = {};
+
+  pedidosGlobal.forEach(p=>{
+
+    if(!p.createdAt || p.estado !== "pagado") return;
+
+    const fecha = new Date(p.createdAt.seconds*1000);
+    const isoMes = fecha.toISOString().slice(0,7);
+
+    if(isoMes === mesSeleccionado){
+
+      const dia = fecha.getDate();
+
+      if(!datosPorDia[dia]) datosPorDia[dia] = 0;
+      datosPorDia[dia] += p.total || 0;
+    }
+  });
+
+  const diasOrdenados = Object.keys(datosPorDia).sort((a,b)=>a-b);
+  const valores = diasOrdenados.map(d=>datosPorDia[d]);
+
+  const ctx = document.getElementById("graficoMensual").getContext("2d");
+
+  if(chartMensual) chartMensual.destroy();
+
+  chartMensual = new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:diasOrdenados,
+      datasets:[{
+        label:"Ventas por Día",
+        data:valores
+      }]
+    }
+  });
+}
 </script>
 </body>
 </html>
