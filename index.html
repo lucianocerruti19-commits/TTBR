@@ -36,18 +36,21 @@ h2{
 }
 
 button{
-  padding:12px 18px;
+  padding:14px 20px;
   border:none;
-  border-radius:14px;
-  background:linear-gradient(135deg,#d4af37,#9b7208);
+  border-radius:16px;
+  background:linear-gradient(135deg,#d4af37,#b8860b);
   color:#000;
   font-weight:bold;
   margin:6px;
   cursor:pointer;
+  min-width:120px;
+  transition:0.2s;
+  font-size:15px;
 }
 
-button:hover{
-  opacity:0.9;
+button:active{
+  transform:scale(0.95);
 }
 
 .tabs{
@@ -55,14 +58,24 @@ button:hover{
   flex-wrap:wrap;
   justify-content:center;
   margin-bottom:15px;
+  position:sticky;
+  top:0;
+  background:#050505;
+  padding:10px 0;
+  z-index:10;
 }
 
 .card{
   background:#111;
   padding:15px;
-  border-radius:12px;
+  border-radius:14px;
   margin-bottom:12px;
   border:1px solid #222;
+  transition:0.2s;
+}
+
+.card:hover{
+  transform:scale(1.02);
 }
 </style>
 </head>
@@ -91,6 +104,9 @@ button:hover{
   <div id="productos"></div>
 </div>
 
+<!-- SONIDO -->
+<audio id="clickSound" src="click.mp3"></audio>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
@@ -108,7 +124,9 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let categorias = [];
+let productos = [];
 
+// 🔹 Cargar categorías
 function cargarCategorias(){
   onSnapshot(collection(db,"categorias"), snap=>{
     categorias=[];
@@ -119,6 +137,17 @@ function cargarCategorias(){
   });
 }
 
+// 🔹 Cargar productos una sola vez
+function cargarProductos(){
+  onSnapshot(collection(db,"productos"), snap=>{
+    productos=[];
+    snap.forEach(d=>{
+      productos.push(d.data());
+    });
+  });
+}
+
+// 🔹 Render botones categorías
 function renderTabs(){
   const tabs=document.getElementById("tabsCategorias");
   tabs.innerHTML="";
@@ -127,25 +156,31 @@ function renderTabs(){
   });
 }
 
+// 🔹 Mostrar productos sin salto
 window.mostrarCat = (cat)=>{
   const prodDiv=document.getElementById("productos");
   prodDiv.innerHTML="";
 
-  onSnapshot(collection(db,"productos"), snap=>{
-    prodDiv.innerHTML="";
-    snap.forEach(d=>{
-      const p=d.data();
-      if(p.categoria === cat){
-        prodDiv.innerHTML+=`
-          <div class="card">
-            <h4>${p.nombre}</h4>
-            <p>$${p.precio}</p>
-          </div>
-        `;
-      }
-    });
+  productos.forEach(p=>{
+    if(p.categoria === cat){
+      prodDiv.innerHTML+=`
+        <div class="card">
+          <h4>${p.nombre}</h4>
+          <p>$${p.precio}</p>
+        </div>
+      `;
+    }
   });
+
+  reproducirSonido();
 };
+
+// 🔊 Sonido
+function reproducirSonido(){
+  const audio = document.getElementById("clickSound");
+  audio.currentTime = 0;
+  audio.play();
+}
 
 window.login = (rol)=>{
 
@@ -186,6 +221,7 @@ window.mostrar = (id)=>{
 };
 
 cargarCategorias();
+cargarProductos();
 </script>
 
 </body>
