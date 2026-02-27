@@ -3,225 +3,188 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dueño Premium</title>
+<title>Dueño - Sistema Profesional</title>
 
 <style>
 body{
   background:#050505;
   color:#f5d28a;
-  font-family:Arial, sans-serif;
-  padding:18px;
+  font-family:Arial;
+  padding:20px;
 }
 
-h1{text-align:center;}
+h1{text-align:center;margin-bottom:20px;}
+
+.dashboard{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:15px;
+  margin-bottom:25px;
+}
 
 .card{
   background:#101010;
   border:1px solid #2b2b2b;
   border-radius:16px;
-  padding:20px;
-  margin:12px 0;
+  padding:18px;
+}
+
+.big{
+  font-size:22px;
+  font-weight:bold;
 }
 
 button{
   padding:12px 18px;
   border:none;
   border-radius:12px;
-  background:linear-gradient(145deg, #d8b14a, #c59a32);
+  background:linear-gradient(145deg,#d8b14a,#b58c2f);
   color:black;
   font-weight:bold;
   cursor:pointer;
-  margin:6px 0;
+  margin-top:10px;
 }
 
-input[type=date]{
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #2b2b2b;
-  background:#111;
-  color:white;
-  margin-bottom:10px;
-}
-
-canvas{width:100%; max-width:500px;}
+canvas{max-width:100%;}
 </style>
 </head>
 <body>
 
-<h1>Panel Dueño Premium</h1>
+<h1>Panel Dueño Profesional</h1>
 
-<audio id="click" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-
-<!-- VENTAS -->
-<div class="card">
-  <h2>Estadísticas de Ventas</h2>
-  <p>Hoy: $<span id="vHoy">0</span></p>
-  <p>Últimos 7 días: $<span id="vSemana">0</span></p>
-  <p>Últimos 30 días: $<span id="vMes">0</span></p>
-  <p>Total general: $<span id="vTotal">0</span></p>
+<div class="dashboard">
+  <div class="card"><div>💰 Vendido Hoy</div><div class="big">$<span id="vendidoHoy">0</span></div></div>
+  <div class="card"><div>💵 Cobrado Hoy</div><div class="big">$<span id="cobradoHoy">0</span></div></div>
+  <div class="card"><div>📦 Pedidos Hoy</div><div class="big"><span id="pedidosHoy">0</span></div></div>
+  <div class="card"><div>🔥 En Cocina</div><div class="big"><span id="enCocina">0</span></div></div>
+  <div class="card"><div>🍽 Listos</div><div class="big"><span id="listos">0</span></div></div>
+  <div class="card"><div>🧾 Pagados</div><div class="big"><span id="pagados">0</span></div></div>
 </div>
 
-<!-- GRAFICO -->
 <div class="card">
-  <h2>Gráfico de Ventas</h2>
+  <h2>Ventas últimos 7 días</h2>
   <canvas id="chart"></canvas>
 </div>
 
-<!-- HISTORIAL -->
 <div class="card">
-  <h2>Historial</h2>
-  <button onclick="mostrarActivos()">Ver activos</button>
-  <button onclick="mostrarArchivados()">Ver archivados</button>
-  <button onclick="archivarHoy()">Archivar historial de hoy</button>
-
+  <h2>Historial Activo</h2>
+  <button onclick="cerrarDia()">🔒 Cerrar Día</button>
   <div id="historial"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  onSnapshot,
-  updateDoc,
-  doc
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "menu-pro-app.firebaseapp.com",
-  projectId: "menu-pro-app",
-  storageBucket: "menu-pro-app.firebasestorage.app",
-  messagingSenderId: "42917274964",
-  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
+ apiKey:"TU_API_KEY",
+ authDomain:"menu-pro-app.firebaseapp.com",
+ projectId:"menu-pro-app",
+ storageBucket:"menu-pro-app.firebasestorage.app",
+ messagingSenderId:"42917274964",
+ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const click = document.getElementById("click");
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
-/* SONIDO EN BOTONES */
-document.addEventListener("click", e=>{
-  if(e.target.tagName === "BUTTON"){
-    click.play();
-  }
-});
+let chart;
 
-/* VENTAS */
 onSnapshot(collection(db,"pedidos"), snap=>{
-  let hoyTotal = 0;
-  let semana = 0;
-  let mes = 0;
 
-  const hoy = new Date().toDateString();
+  let vendidoHoy=0;
+  let cobradoHoy=0;
+  let pedidosHoy=0;
+  let enCocina=0;
+  let listos=0;
+  let pagados=0;
+
+  let ventasPorDia={};
+  const hoyStr=new Date().toDateString();
+  const historial=document.getElementById("historial");
+  historial.innerHTML="";
 
   snap.forEach(d=>{
-    const p = d.data();
-    if(p.estado === "pagado" || p.estado === "entregado"){
+    const p=d.data();
+    if(!p.createdAt) return;
 
-      const fecha = new Date(p.createdAt.seconds*1000);
-      const fstr = fecha.toDateString();
+    const fecha=new Date(p.createdAt.seconds*1000);
+    const fechaStr=fecha.toDateString();
 
-      if(fstr === hoy) hoyTotal += p.total;
+    if(fechaStr===hoyStr){
+      pedidosHoy++;
+      vendidoHoy+=p.total||0;
 
-      const diff = (new Date() - fecha) / (1000*60*60*24);
-      if(diff <= 7) semana += p.total;
-      if(diff <= 30) mes += p.total;
+      if(p.estado==="pagado") cobradoHoy+=p.total||0;
+    }
+
+    if(p.estado==="en_cocina") enCocina++;
+    if(p.estado==="listo") listos++;
+    if(p.estado==="pagado") pagados++;
+
+    // gráfico
+    const key=fechaStr;
+    if(!ventasPorDia[key]) ventasPorDia[key]=0;
+    if(p.estado==="pagado") ventasPorDia[key]+=p.total||0;
+
+    // historial activo (no cerrados)
+    if(p.estado!=="cerrado"){
+      historial.innerHTML+=`
+      <div class="card">
+        <strong>Mesa:</strong> ${p.mesa}<br>
+        <strong>Total:</strong> $${p.total}<br>
+        <strong>Estado:</strong> ${p.estado}<br>
+        <strong>Mozo Cobró:</strong> ${p.mozoCobro||"-"}<br>
+        <strong>Fecha:</strong> ${fecha.toLocaleString()}<br>
+        <strong>Items:</strong><br>
+        ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+      </div>`;
     }
   });
 
-  document.getElementById("vHoy").innerText = hoyTotal;
-  document.getElementById("vSemana").innerText = semana;
-  document.getElementById("vMes").innerText = mes;
+  document.getElementById("vendidoHoy").innerText=vendidoHoy;
+  document.getElementById("cobradoHoy").innerText=cobradoHoy;
+  document.getElementById("pedidosHoy").innerText=pedidosHoy;
+  document.getElementById("enCocina").innerText=enCocina;
+  document.getElementById("listos").innerText=listos;
+  document.getElementById("pagados").innerText=pagados;
+
+  actualizarGrafico(ventasPorDia);
 });
 
-/* HISTORIAL ACTIVO */
-function cargarHistorial(filtro = null, soloArchivados = false){
-  onSnapshot(collection(db,"pedidos"), snap=>{
-    const h = document.getElementById("historial");
-    h.innerHTML = "";
+function actualizarGrafico(data){
+  const ctx=document.getElementById("chart").getContext("2d");
+  if(chart) chart.destroy();
 
-    snap.forEach(d=>{
-      const p = d.data();
-      const fecha = new Date(p.createdAt.seconds*1000);
+  const labels=Object.keys(data).slice(-7);
+  const values=Object.values(data).slice(-7);
 
-      if(soloArchivados && !p.archivado) return;
-      if(!soloArchivados && p.archivado) return;
-
-      if(filtro && fecha.toDateString() !== filtro) return;
-
-      h.innerHTML += `
-      <div class="card">
-        <h3>Mesa ${p.mesa}</h3>
-        <p><strong>Mozo:</strong> ${p.mozo || "—"}</p>
-        <p><strong>Mozo Cobro:</strong> ${p.mozoCobro || "—"}</p>
-        <p><strong>Total:</strong> $${p.total}</p>
-        <p><strong>Estado:</strong> ${p.estado}</p>
-        <p><strong>Fecha:</strong> ${fecha.toLocaleString()}</p>
-        <p><strong>Items:</strong><br>
-          ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
-        </p>
-      </div>`;
-    });
+  chart=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels,
+      datasets:[{label:"Ventas",data:values}]
+    }
   });
 }
 
-/* VER ACTIVOS */
-window.mostrarActivos = () => cargarHistorial(null,false);
-
-/* VER ARCHIVADOS */
-window.mostrarArchivados = () => cargarHistorial(null,true);
-
-/* ARCHIVAR HISTORIAL DEL DÍA */
-window.archivarHoy = () => {
-  if(!confirm("Archivar historial de hoy?")) return;
-
-  const hoy = new Date().toDateString();
+window.cerrarDia=async()=>{
+  if(!confirm("Cerrar día actual?")) return;
 
   onSnapshot(collection(db,"pedidos"), snap=>{
     snap.forEach(async d=>{
-      const p = d.data();
-      const fecha = new Date(p.createdAt.seconds*1000);
-
-      if(fecha.toDateString() === hoy){
-        await updateDoc(doc(db,"pedidos", d.id),{
-          archivado: true
+      const p=d.data();
+      if(p.estado==="pagado"){
+        await updateDoc(doc(db,"pedidos",d.id),{
+          estado:"cerrado"
         });
       }
     });
   });
 
-  document.getElementById("historial").innerHTML = "";
-  alert("Historial del día archivado ✔");
+  alert("Día cerrado correctamente ✔");
 };
-
-/* GRAFICO */
-let chart;
-function actualizarGrafico(valor){
-  const ctx=document.getElementById("chart").getContext("2d");
-  if(chart) chart.destroy();
-  chart=new Chart(ctx,{
-    type:'bar',
-    data:{labels:['Hoy'],datasets:[{label:'Ventas',data:[valor]}]}
-  });
-}
-
-onSnapshot(collection(db,"pedidos"), snap=>{
-  let hoyTotal=0;
-  snap.forEach(d=>{
-    const p = d.data();
-    if((p.estado==="pagado"||p.estado==="entregado")){
-      const fecha=new Date(p.createdAt.seconds*1000);
-      if(fecha.toDateString()===new Date().toDateString()){
-        hoyTotal+=p.total;
-      }
-    }
-  });
-  actualizarGrafico(hoyTotal);
-});
-
-cargarHistorial();
 </script>
 </body>
 </html>
