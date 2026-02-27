@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dueño - Sistema Profesional</title>
+<title>Dueño - Control Profesional</title>
 
 <style>
 body{
@@ -17,9 +17,9 @@ h1{text-align:center;margin-bottom:20px;}
 
 .dashboard{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
   gap:15px;
-  margin-bottom:25px;
+  margin-bottom:20px;
 }
 
 .card{
@@ -35,44 +35,45 @@ h1{text-align:center;margin-bottom:20px;}
 }
 
 button{
-  padding:12px 18px;
+  padding:10px 16px;
   border:none;
-  border-radius:12px;
+  border-radius:10px;
   background:linear-gradient(145deg,#d8b14a,#b58c2f);
-  color:black;
   font-weight:bold;
   cursor:pointer;
-  margin-top:10px;
+  margin:5px 5px 10px 0;
 }
 
-canvas{max-width:100%;}
+input[type="date"]{
+  padding:8px;
+  border-radius:8px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
+}
 </style>
 </head>
 <body>
 
-<h1>Panel Dueño Profesional</h1>
+<h1>Panel Dueño - Control Total</h1>
+
+<label>Seleccionar Fecha:</label>
+<input type="date" id="fechaFiltro">
 
 <div class="dashboard">
-  <div class="card"><div>💰 Vendido Hoy</div><div class="big">$<span id="vendidoHoy">0</span></div></div>
-  <div class="card"><div>💵 Cobrado Hoy</div><div class="big">$<span id="cobradoHoy">0</span></div></div>
-  <div class="card"><div>📦 Pedidos Hoy</div><div class="big"><span id="pedidosHoy">0</span></div></div>
-  <div class="card"><div>🔥 En Cocina</div><div class="big"><span id="enCocina">0</span></div></div>
-  <div class="card"><div>🍽 Listos</div><div class="big"><span id="listos">0</span></div></div>
-  <div class="card"><div>🧾 Pagados</div><div class="big"><span id="pagados">0</span></div></div>
+  <div class="card">💰 Vendido <div class="big">$<span id="vendido">0</span></div></div>
+  <div class="card">💵 Cobrado <div class="big">$<span id="cobrado">0</span></div></div>
+  <div class="card">📦 Pedidos <div class="big"><span id="pedidos">0</span></div></div>
+  <div class="card">🧾 Pagados <div class="big"><span id="pagados">0</span></div></div>
 </div>
 
 <div class="card">
-  <h2>Ventas últimos 7 días</h2>
-  <canvas id="chart"></canvas>
-</div>
-
-<div class="card">
-  <h2>Historial Activo</h2>
   <button onclick="cerrarDia()">🔒 Cerrar Día</button>
-  <div id="historial"></div>
+  <button onclick="exportarExcel()">📤 Exportar Excel</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div id="historial"></div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
@@ -89,101 +90,112 @@ const firebaseConfig = {
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-let chart;
+const fechaInput=document.getElementById("fechaFiltro");
+const hoyISO=new Date().toISOString().split("T")[0];
+fechaInput.value=hoyISO;
+
+let pedidosGlobal=[];
 
 onSnapshot(collection(db,"pedidos"), snap=>{
+  pedidosGlobal=[];
+  snap.forEach(d=>{
+    pedidosGlobal.push({...d.data(),id:d.id});
+  });
+  filtrarPorFecha();
+});
 
-  let vendidoHoy=0;
-  let cobradoHoy=0;
-  let pedidosHoy=0;
-  let enCocina=0;
-  let listos=0;
+fechaInput.addEventListener("change",filtrarPorFecha);
+
+function filtrarPorFecha(){
+
+  const fechaSeleccionada=fechaInput.value;
+
+  let vendido=0;
+  let cobrado=0;
+  let pedidos=0;
   let pagados=0;
 
-  let ventasPorDia={};
-  const hoyStr=new Date().toDateString();
   const historial=document.getElementById("historial");
   historial.innerHTML="";
 
-  snap.forEach(d=>{
-    const p=d.data();
+  pedidosGlobal.forEach(p=>{
+
     if(!p.createdAt) return;
 
     const fecha=new Date(p.createdAt.seconds*1000);
-    const fechaStr=fecha.toDateString();
+    const iso=fecha.toISOString().split("T")[0];
 
-    if(fechaStr===hoyStr){
-      pedidosHoy++;
-      vendidoHoy+=p.total||0;
+    if(iso===fechaSeleccionada){
 
-      if(p.estado==="pagado") cobradoHoy+=p.total||0;
-    }
+      pedidos++;
+      vendido+=p.total||0;
 
-    if(p.estado==="en_cocina") enCocina++;
-    if(p.estado==="listo") listos++;
-    if(p.estado==="pagado") pagados++;
+      if(p.estado==="pagado"||p.estado==="cerrado"){
+        cobrado+=p.total||0;
+        pagados++;
+      }
 
-    // gráfico
-    const key=fechaStr;
-    if(!ventasPorDia[key]) ventasPorDia[key]=0;
-    if(p.estado==="pagado") ventasPorDia[key]+=p.total||0;
-
-    // historial activo (no cerrados)
-    if(p.estado!=="cerrado"){
       historial.innerHTML+=`
       <div class="card">
         <strong>Mesa:</strong> ${p.mesa}<br>
         <strong>Total:</strong> $${p.total}<br>
         <strong>Estado:</strong> ${p.estado}<br>
         <strong>Mozo Cobró:</strong> ${p.mozoCobro||"-"}<br>
-        <strong>Fecha:</strong> ${fecha.toLocaleString()}<br>
+        <strong>Hora:</strong> ${fecha.toLocaleTimeString()}<br>
         <strong>Items:</strong><br>
         ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
       </div>`;
     }
   });
 
-  document.getElementById("vendidoHoy").innerText=vendidoHoy;
-  document.getElementById("cobradoHoy").innerText=cobradoHoy;
-  document.getElementById("pedidosHoy").innerText=pedidosHoy;
-  document.getElementById("enCocina").innerText=enCocina;
-  document.getElementById("listos").innerText=listos;
+  document.getElementById("vendido").innerText=vendido;
+  document.getElementById("cobrado").innerText=cobrado;
+  document.getElementById("pedidos").innerText=pedidos;
   document.getElementById("pagados").innerText=pagados;
-
-  actualizarGrafico(ventasPorDia);
-});
-
-function actualizarGrafico(data){
-  const ctx=document.getElementById("chart").getContext("2d");
-  if(chart) chart.destroy();
-
-  const labels=Object.keys(data).slice(-7);
-  const values=Object.values(data).slice(-7);
-
-  chart=new Chart(ctx,{
-    type:"bar",
-    data:{
-      labels,
-      datasets:[{label:"Ventas",data:values}]
-    }
-  });
 }
 
 window.cerrarDia=async()=>{
-  if(!confirm("Cerrar día actual?")) return;
+  if(!confirm("Cerrar día seleccionado?")) return;
 
-  onSnapshot(collection(db,"pedidos"), snap=>{
-    snap.forEach(async d=>{
-      const p=d.data();
-      if(p.estado==="pagado"){
-        await updateDoc(doc(db,"pedidos",d.id),{
-          estado:"cerrado"
-        });
-      }
-    });
+  const fechaSeleccionada=fechaInput.value;
+
+  pedidosGlobal.forEach(async p=>{
+    if(!p.createdAt) return;
+
+    const fecha=new Date(p.createdAt.seconds*1000);
+    const iso=fecha.toISOString().split("T")[0];
+
+    if(iso===fechaSeleccionada && p.estado==="pagado"){
+      await updateDoc(doc(db,"pedidos",p.id),{
+        estado:"cerrado"
+      });
+    }
   });
 
   alert("Día cerrado correctamente ✔");
+};
+
+window.exportarExcel=()=>{
+  const fechaSeleccionada=fechaInput.value;
+  let csv="Mesa,Total,Estado,MozoCobro,Hora\n";
+
+  pedidosGlobal.forEach(p=>{
+    if(!p.createdAt) return;
+
+    const fecha=new Date(p.createdAt.seconds*1000);
+    const iso=fecha.toISOString().split("T")[0];
+
+    if(iso===fechaSeleccionada){
+      csv+=`${p.mesa},${p.total},${p.estado},${p.mozoCobro||""},${fecha.toLocaleTimeString()}\n`;
+    }
+  });
+
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`ventas_${fechaSeleccionada}.csv`;
+  a.click();
 };
 </script>
 </body>
