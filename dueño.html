@@ -1,26 +1,220 @@
-<div id="dueno" class="section">
-  <button onclick="mostrar('selector')">⬅ Volver</button>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOTOBAR</title>
 
-  <h3>Panel Dueño Premium</h3>
+<style>
+body{
+  background: radial-gradient(circle at top, #111, #050505);
+  color:#f5d28a;
+  font-family:Arial;
+  padding:14px;
+  max-width:900px;
+  margin:0 auto;
+}
 
-  <div class="card">
-    <h4>Ventas del día (<span id="fechaHoy"></span>)</h4>
-    <p>Vendido: $<span id="vHoy">0</span></p>
-    <p>Pedidos pagados: <span id="pHoy">0</span></p>
+/* LOGO GRANDE */
+header{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.logo{
+  width:280px;
+  animation: pop 0.6s ease;
+}
+
+@keyframes pop{
+  0%{transform:scale(0.8); opacity:0;}
+  100%{transform:scale(1); opacity:1;}
+}
+
+/* SECCIONES */
+.section{
+  display:none;
+  animation: fadeIn 0.35s ease;
+}
+
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(8px);}
+  to{opacity:1; transform:translateY(0);}
+}
+
+/* BOTONES ORO WAITER */
+button{
+  padding:14px 18px;
+  font-size:18px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(145deg, #8a6a2f, #5f4a1a);
+  color:white;
+  font-weight:bold;
+  box-shadow:0 6px 18px rgba(138,106,47,0.6);
+  transition:transform 0.15s ease, box-shadow 0.15s ease;
+  margin-top:10px;
+  width:100%;
+}
+
+button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 24px rgba(138,106,47,0.8);
+}
+
+button:active{
+  transform:scale(0.97);
+}
+
+/* GRILLA 3 EN 3 */
+.tabs{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:10px;
+  justify-items:center;
+  margin-bottom:20px;
+}
+
+.tabs button{
+  width:100%;
+  text-align:center;
+}
+
+/* TARJETAS */
+.card{
+  background:#101010;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:20px;
+  border:1px solid rgba(212,175,55,0.25);
+  font-size:18px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.8);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="logo.png" class="logo">
+  <h2>TOTOBAR</h2>
+</header>
+
+<!-- SELECTOR -->
+<div id="selector" class="section" style="display:block;">
+  <h2>Seleccionar modo</h2>
+  <div class="tabs">
+    <button onclick="login('cliente')">Cliente</button>
+    <button onclick="login('mozo')">Mozo</button>
+    <button onclick="login('cocina')">Cocina</button>
+    <button onclick="login('admin')">Admin</button>
+    <button onclick="login('dueno')">Dueño</button>
   </div>
-
-  <div class="card">
-    <h4>Histórico</h4>
-    <input type="date" id="filtroFecha">
-    <button onclick="filtrarFecha()">Filtrar</button>
-    <button onclick="mostrarHoy()">Hoy</button>
-    <div id="historial"></div>
-  </div>
-
-  <div class="card">
-    <h4>Gráfico mensual</h4>
-    <canvas id="grafico"></canvas>
-  </div>
-
-  <button onclick="exportarExcel()">Exportar Excel</button>
 </div>
+
+<!-- CLIENTE SOLO VISUAL -->
+<div id="cliente" class="section">
+  <button onclick="mostrar('selector')">⬅ Volver</button>
+  <h2>Menú</h2>
+  <div class="tabs" id="tabsCategorias"></div>
+  <div id="productos"></div>
+</div>
+
+<audio id="clickSound" src="click.mp3"></audio>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const firebaseConfig={
+ apiKey:"TU_API_KEY",
+ authDomain:"menu-pro-app.firebaseapp.com",
+ projectId:"menu-pro-app",
+ storageBucket:"menu-pro-app.firebasestorage.app",
+ messagingSenderId:"42917274964",
+ appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let categorias=[];
+let productos=[];
+
+/* CARGAR DATOS */
+function cargarCategorias(){
+  onSnapshot(collection(db,"categorias"), snap=>{
+    categorias=[];
+    snap.forEach(d=>categorias.push(d.data().nombre));
+    renderTabs();
+  });
+}
+
+function cargarProductos(){
+  onSnapshot(collection(db,"productos"), snap=>{
+    productos=[];
+    snap.forEach(d=>productos.push(d.data()));
+  });
+}
+
+function renderTabs(){
+  const tabs=document.getElementById("tabsCategorias");
+  tabs.innerHTML="";
+  categorias.forEach(cat=>{
+    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
+  });
+}
+
+/* MOSTRAR PRODUCTOS */
+window.mostrarCat=(cat)=>{
+  const prodDiv=document.getElementById("productos");
+  prodDiv.innerHTML="";
+
+  productos.forEach(p=>{
+    if(p.categoria===cat){
+      prodDiv.innerHTML+=`
+        <div class="card">
+          <h3>${p.nombre}</h3>
+          <p>$${p.precio}</p>
+        </div>
+      `;
+    }
+  });
+
+  reproducirSonido();
+};
+
+function reproducirSonido(){
+  const audio=document.getElementById("clickSound");
+  audio.currentTime=0;
+  audio.play();
+}
+
+/* LOGIN */
+window.login=(rol)=>{
+  if(rol==="cliente"){
+    mostrar("cliente");
+    return;
+  }
+
+  const pass=prompt("Contraseña:");
+  if(!pass) return;
+
+  if(rol==="mozo" && pass==="mozo2026") window.location.href="waiter.html";
+  else if(rol==="cocina" && pass==="cocina2026") window.location.href="kitchen.html";
+  else if(rol==="admin" && pass==="toto321") window.location.href="admin.html";
+  else if(rol==="dueno" && pass==="toto321") window.location.href="dueño.html";
+  else alert("Contraseña incorrecta");
+};
+
+/* CAMBIAR SECCIÓN */
+window.mostrar=(id)=>{
+  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="block";
+};
+
+cargarCategorias();
+cargarProductos();
+</script>
+
+</body>
+</html>
