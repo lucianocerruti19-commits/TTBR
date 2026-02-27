@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Dueño</title>
+
+<style>
+body{
+  background:#050505;
+  color:#f5d28a;
+  font-family:Arial;
+  padding:18px;
+}
+
+header{text-align:center;}
+
+.logo{width:280px;}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:12px;
+}
+
+.card{
+  background:#101010;
+  border:1px solid #2b2b2b;
+  border-radius:16px;
+  padding:18px;
+  font-size:18px;
+}
+
+button{
+  padding:14px 18px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(145deg, #8a6a2f, #5f4a1a);
+  color:white;
+  font-weight:bold;
+  box-shadow:0 4px 12px rgba(138,106,47,0.6);
+  margin:6px 0;
+  width:100%;
+}
+
+section{margin-top:20px;}
+
+input[type=date]{
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
+}
+
+canvas{max-width:500px;}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="logo.png" class="logo">
+  <h1>Panel Dueño</h1>
+</header>
+
+<!-- FILTRO -->
+<section>
+  <h3>Filtrar por fecha</h3>
+  <input type="date" id="fechaFiltro">
+  <button onclick="filtrarFecha()">Filtrar</button>
+</section>
+
+<!-- MÉTRICAS -->
+<div class="grid">
+  <div class="card">
+    <h3>Pedidos</h3>
+    <p>$<span id="pedidosTotal">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Cobrados</h3>
+    <p>$<span id="cobradosTotal">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Pagados</h3>
+    <p>$<span id="pagadosTotal">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Total vendido</h3>
+    <p>$<span id="vendidoTotal">0</span></p>
+  </div>
+</div>
+
+<!-- BOTONES -->
+<section>
+  <button onclick="limpiarDia()">Limpiar día</button>
+  <button onclick="nuevoDia()">Nuevo día</button>
+  <button onclick="exportarExcel()">Exportar Excel</button>
+</section>
+
+<!-- GRÁFICO -->
+<section>
+  <h2>Gráfico mensual</h2>
+  <canvas id="chart"></canvas>
+</section>
+
+<!-- HISTORIAL -->
+<section>
+  <h2>Historial</h2>
+  <div id="historial"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  updateDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCa-R6z76qoMt6Wf9EZFSqqGNY8U4JUMtM",
+  authDomain: "menu-pro-app.firebaseapp.com",
+  projectId: "menu-pro-app",
+  storageBucket: "menu-pro-app.firebasestorage.app",
+  messagingSenderId: "42917274964",
+  appId: "1:42917274964:web:13e161810ad195718994c1"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+
+let fechaActual = new Date().toDateString();
+let chart;
+
+/* AUTOMÁTICO 5 AM */
+setInterval(()=>{
+  const h = new Date();
+  if(h.getHours() === 5 && h.getMinutes() === 0){
+    nuevoDia();
+  }
+}, 60000);
+
+/* ESTADÍSTICAS */
+onSnapshot(collection(db,"pedidos"), snap=>{
+  let pedidos = 0;
+  let cobrados = 0;
+  let pagados = 0;
+  let vendido = 0;
+  let mensual = {};
+
+  snap.forEach(d=>{
+    const p = d.data();
+    if(p.archivado) return;
+
+    const fecha = new Date(p.createdAt.seconds*1000);
+    const fstr = fecha.toLocaleString('default',{month:'short',year:'numeric'});
+
+    mensual[fstr] = (mensual[fstr] || 0) + (p.estado==="pagado" ? p.total : 0);
+
+    if(fecha.toDateString() !== fechaActual) return;
+
+    pedidos += p.total;
+    if(p.estado === "pagado") {
+      pagados += p.total;
+      cobrados += p.total;
+      vendido += p.total;
+    }
+    else if(p.estado === "entregado") {
+      cobrados += p.total;
+      vendido += p.total;
+    }
+  });
+
+  document.getElementById("pedidosTotal").innerText = pedidos;
+  document.getElementById("cobradosTotal").innerText = cobrados;
+  document.getElementById("pagadosTotal").innerText = pagados;
+  document.getElementById("vendidoTotal").innerText = vendido;
+
+  actualizarGrafico(mensual);
+});
+
+/* FILTRO REAL */
+window.filtrarFecha = () => {
+  const f = document.getElementById("fechaFiltro").value;
+  if(!f) return;
+
+  const sel = new Date(f).toDateString();
+  document.getElementById("historial").innerHTML = "";
+
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(d=>{
+      const p = d.data();
+      const fecha = new Date(p.createdAt.seconds*1000).toDateString();
+
+      if(fecha === sel && !p.archivado){
+        document.getElementById("historial").innerHTML += `
+        <div class="card">
+          <h3>Mesa ${p.mesa}</h3>
+          <p>Total: $${p.total}</p>
+          <p>Estado: ${p.estado}</p>
+          <p>Fecha: ${new Date(p.createdAt.seconds*1000).toLocaleString()}</p>
+        </div>`;
+      }
+    });
+  });
+};
+
+/* GRAFICO */
+function actualizarGrafico(datos){
+  const ctx = document.getElementById("chart").getContext("2d");
+  if(chart) chart.destroy();
+
+  chart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:Object.keys(datos),
+      datasets:[{label:'Ventas', data:Object.values(datos)}]
+    }
+  });
+}
+
+/* HISTORIAL */
+function cargarHistorial(){
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    const h = document.getElementById("historial");
+    h.innerHTML = "";
+
+    snap.forEach(d=>{
+      const p = d.data();
+      if(p.archivado) return;
+
+      h.innerHTML += `
+      <div class="card">
+        <h3>Mesa ${p.mesa}</h3>
+        <p>Total: $${p.total}</p>
+        <p>Estado: ${p.estado}</p>
+        <p>Fecha: ${new Date(p.createdAt.seconds*1000).toLocaleString()}</p>
+      </div>`;
+    });
+  });
+}
+
+/* LIMPIAR DÍA */
+window.limpiarDia = () => {
+  if(!confirm("Limpiar día?")) return;
+
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(async d=>{
+      const p = d.data();
+      const fecha = new Date(p.createdAt.seconds*1000).toDateString();
+      if(fecha === fechaActual){
+        await updateDoc(doc(db,"pedidos", d.id),{
+          archivado: true
+        });
+      }
+    });
+  });
+
+  document.getElementById("historial").innerHTML = "";
+};
+
+/* NUEVO DÍA */
+window.nuevoDia = () => {
+  fechaActual = new Date().toDateString();
+  document.getElementById("historial").innerHTML = "";
+};
+
+/* EXPORT EXCEL */
+window.exportarExcel = () => {
+  let csv = "mesa,total,estado,fecha\n";
+
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(d=>{
+      const p = d.data();
+      if(p.archivado) return;
+      csv += `${p.mesa},${p.total},${p.estado},${new Date(p.createdAt.seconds*1000).toLocaleString()}\n`;
+    });
+
+    const blob = new Blob([csv],{type:"text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ventas.csv";
+    a.click();
+  });
+};
+
+cargarHistorial();
+</script>
+</body>
+</html>
