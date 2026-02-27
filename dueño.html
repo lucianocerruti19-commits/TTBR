@@ -97,7 +97,7 @@ canvas{max-width:500px;}
   <canvas id="chart"></canvas>
 </section>
 
-<!-- HISTORIAL -->
+<!-- DETALLE -->
 <section>
   <h2>Detalle</h2>
   <div id="historial"></div>
@@ -127,7 +127,15 @@ const db = getFirestore(initializeApp(firebaseConfig));
 let chart;
 let filtro = null;
 
-/* ESTADÍSTICAS Y GRÁFICO */
+/* AUTOMÁTICO 5 AM */
+setInterval(()=>{
+  const h = new Date();
+  if(h.getHours() === 5 && h.getMinutes() === 0){
+    nuevoDia();
+  }
+}, 60000);
+
+/* ACTUALIZAR TODO */
 function actualizar(){
   onSnapshot(collection(db,"pedidos"), snap=>{
     let pedidos = 0;
@@ -135,8 +143,8 @@ function actualizar(){
     let pagados = 0;
     let vendido = 0;
     let mensual = {};
+    let detalle = false;
 
-    let hayDetalle = false;
     const cont = document.getElementById("historial");
     cont.innerHTML = "";
 
@@ -144,36 +152,41 @@ function actualizar(){
       const p = d.data();
       if(p.archivado) return;
 
-      const fecha = new Date(p.createdAt.seconds*1000);
+      const fecha = p.createdAt?.seconds
+        ? new Date(p.createdAt.seconds*1000)
+        : new Date(0);
+
       const fDia = fecha.toDateString();
       const fMes = fecha.toLocaleString('default',{month:'short',year:'numeric'});
 
       mensual[fMes] = (mensual[fMes] || 0) + (p.estado==="pagado" ? p.total : 0);
 
+      // filtro
       if(filtro && fDia !== filtro) return;
 
-      hayDetalle = true;
-      pedidos += p.total;
+      detalle = true;
+      pedidos += p.total || 0;
+
       if(p.estado === "pagado") {
-        pagados += p.total;
-        cobrados += p.total;
-        vendido += p.total;
+        pagados += p.total || 0;
+        cobrados += p.total || 0;
+        vendido += p.total || 0;
       } else if(p.estado === "entregado") {
-        cobrados += p.total;
-        vendido += p.total;
+        cobrados += p.total || 0;
+        vendido += p.total || 0;
       }
 
       cont.innerHTML += `
         <div class="card">
-          <h3>Mesa ${p.mesa}</h3>
-          <p>Total: $${p.total}</p>
-          <p>Estado: ${p.estado}</p>
+          <h3>Mesa ${p.mesa || "?"}</h3>
+          <p>Total: $${p.total || 0}</p>
+          <p>Estado: ${p.estado || "sin estado"}</p>
           <p>Fecha: ${fecha.toLocaleString()}</p>
           <p>Items:<br>${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}</p>
         </div>`;
     });
 
-    if(!hayDetalle){
+    if(!detalle){
       cont.innerHTML = `
         <div class="card">
           <h3>No hay ventas</h3>
