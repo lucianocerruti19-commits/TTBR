@@ -68,6 +68,7 @@ canvas{max-width:500px;}
   <h3>Filtrar por fecha</h3>
   <input type="date" id="fechaFiltro">
   <button onclick="filtrarFecha()">Filtrar</button>
+  <button onclick="nuevoDia()">Nuevo día</button>
 </section>
 
 <!-- MÉTRICAS -->
@@ -90,13 +91,6 @@ canvas{max-width:500px;}
   </div>
 </div>
 
-<!-- BOTONES -->
-<section>
-  <button onclick="limpiarDia()">Limpiar día</button>
-  <button onclick="nuevoDia()">Nuevo día</button>
-  <button onclick="exportarExcel()">Exportar Excel</button>
-</section>
-
 <!-- GRÁFICO -->
 <section>
   <h2>Gráfico mensual</h2>
@@ -105,7 +99,7 @@ canvas{max-width:500px;}
 
 <!-- HISTORIAL -->
 <section>
-  <h2>Historial</h2>
+  <h2>Detalle</h2>
   <div id="historial"></div>
 </section>
 
@@ -116,9 +110,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/fireba
 import {
   getFirestore,
   collection,
-  onSnapshot,
-  updateDoc,
-  doc
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -132,83 +124,88 @@ const firebaseConfig = {
 
 const db = getFirestore(initializeApp(firebaseConfig));
 
-let fechaActual = new Date().toDateString();
 let chart;
+let filtro = null;
 
-/* AUTOMÁTICO 5 AM */
-setInterval(()=>{
-  const h = new Date();
-  if(h.getHours() === 5 && h.getMinutes() === 0){
-    nuevoDia();
-  }
-}, 60000);
-
-/* ESTADÍSTICAS */
-onSnapshot(collection(db,"pedidos"), snap=>{
-  let pedidos = 0;
-  let cobrados = 0;
-  let pagados = 0;
-  let vendido = 0;
-  let mensual = {};
-
-  snap.forEach(d=>{
-    const p = d.data();
-    if(p.archivado) return;
-
-    const fecha = new Date(p.createdAt.seconds*1000);
-    const fstr = fecha.toLocaleString('default',{month:'short',year:'numeric'});
-
-    mensual[fstr] = (mensual[fstr] || 0) + (p.estado==="pagado" ? p.total : 0);
-
-    if(fecha.toDateString() !== fechaActual) return;
-
-    pedidos += p.total;
-    if(p.estado === "pagado") {
-      pagados += p.total;
-      cobrados += p.total;
-      vendido += p.total;
-    }
-    else if(p.estado === "entregado") {
-      cobrados += p.total;
-      vendido += p.total;
-    }
-  });
-
-  document.getElementById("pedidosTotal").innerText = pedidos;
-  document.getElementById("cobradosTotal").innerText = cobrados;
-  document.getElementById("pagadosTotal").innerText = pagados;
-  document.getElementById("vendidoTotal").innerText = vendido;
-
-  actualizarGrafico(mensual);
-});
-
-/* FILTRO REAL */
-window.filtrarFecha = () => {
-  const f = document.getElementById("fechaFiltro").value;
-  if(!f) return;
-
-  const sel = new Date(f).toDateString();
-  document.getElementById("historial").innerHTML = "";
-
+/* ESTADÍSTICAS Y GRÁFICO */
+function actualizar(){
   onSnapshot(collection(db,"pedidos"), snap=>{
+    let pedidos = 0;
+    let cobrados = 0;
+    let pagados = 0;
+    let vendido = 0;
+    let mensual = {};
+
+    let hayDetalle = false;
+    const cont = document.getElementById("historial");
+    cont.innerHTML = "";
+
     snap.forEach(d=>{
       const p = d.data();
-      const fecha = new Date(p.createdAt.seconds*1000).toDateString();
+      if(p.archivado) return;
 
-      if(fecha === sel && !p.archivado){
-        document.getElementById("historial").innerHTML += `
+      const fecha = new Date(p.createdAt.seconds*1000);
+      const fDia = fecha.toDateString();
+      const fMes = fecha.toLocaleString('default',{month:'short',year:'numeric'});
+
+      mensual[fMes] = (mensual[fMes] || 0) + (p.estado==="pagado" ? p.total : 0);
+
+      if(filtro && fDia !== filtro) return;
+
+      hayDetalle = true;
+      pedidos += p.total;
+      if(p.estado === "pagado") {
+        pagados += p.total;
+        cobrados += p.total;
+        vendido += p.total;
+      } else if(p.estado === "entregado") {
+        cobrados += p.total;
+        vendido += p.total;
+      }
+
+      cont.innerHTML += `
         <div class="card">
           <h3>Mesa ${p.mesa}</h3>
           <p>Total: $${p.total}</p>
           <p>Estado: ${p.estado}</p>
-          <p>Fecha: ${new Date(p.createdAt.seconds*1000).toLocaleString()}</p>
+          <p>Fecha: ${fecha.toLocaleString()}</p>
+          <p>Items:<br>${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}</p>
         </div>`;
-      }
     });
+
+    if(!hayDetalle){
+      cont.innerHTML = `
+        <div class="card">
+          <h3>No hay ventas</h3>
+          <p>Pedidos: $0</p>
+        </div>`;
+    }
+
+    document.getElementById("pedidosTotal").innerText = pedidos;
+    document.getElementById("cobradosTotal").innerText = cobrados;
+    document.getElementById("pagadosTotal").innerText = pagados;
+    document.getElementById("vendidoTotal").innerText = vendido;
+
+    actualizarGrafico(mensual);
   });
+}
+
+/* FILTRAR */
+window.filtrarFecha = () => {
+  const f = document.getElementById("fechaFiltro").value;
+  if(!f) return;
+  filtro = new Date(f).toDateString();
+  actualizar();
 };
 
-/* GRAFICO */
+/* NUEVO DÍA */
+window.nuevoDia = () => {
+  filtro = null;
+  document.getElementById("fechaFiltro").value = "";
+  actualizar();
+};
+
+/* GRÁFICO */
 function actualizarGrafico(datos){
   const ctx = document.getElementById("chart").getContext("2d");
   if(chart) chart.destroy();
@@ -222,72 +219,7 @@ function actualizarGrafico(datos){
   });
 }
 
-/* HISTORIAL */
-function cargarHistorial(){
-  onSnapshot(collection(db,"pedidos"), snap=>{
-    const h = document.getElementById("historial");
-    h.innerHTML = "";
-
-    snap.forEach(d=>{
-      const p = d.data();
-      if(p.archivado) return;
-
-      h.innerHTML += `
-      <div class="card">
-        <h3>Mesa ${p.mesa}</h3>
-        <p>Total: $${p.total}</p>
-        <p>Estado: ${p.estado}</p>
-        <p>Fecha: ${new Date(p.createdAt.seconds*1000).toLocaleString()}</p>
-      </div>`;
-    });
-  });
-}
-
-/* LIMPIAR DÍA */
-window.limpiarDia = () => {
-  if(!confirm("Limpiar día?")) return;
-
-  onSnapshot(collection(db,"pedidos"), snap=>{
-    snap.forEach(async d=>{
-      const p = d.data();
-      const fecha = new Date(p.createdAt.seconds*1000).toDateString();
-      if(fecha === fechaActual){
-        await updateDoc(doc(db,"pedidos", d.id),{
-          archivado: true
-        });
-      }
-    });
-  });
-
-  document.getElementById("historial").innerHTML = "";
-};
-
-/* NUEVO DÍA */
-window.nuevoDia = () => {
-  fechaActual = new Date().toDateString();
-  document.getElementById("historial").innerHTML = "";
-};
-
-/* EXPORT EXCEL */
-window.exportarExcel = () => {
-  let csv = "mesa,total,estado,fecha\n";
-
-  onSnapshot(collection(db,"pedidos"), snap=>{
-    snap.forEach(d=>{
-      const p = d.data();
-      if(p.archivado) return;
-      csv += `${p.mesa},${p.total},${p.estado},${new Date(p.createdAt.seconds*1000).toLocaleString()}\n`;
-    });
-
-    const blob = new Blob([csv],{type:"text/csv"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "ventas.csv";
-    a.click();
-  });
-};
-
-cargarHistorial();
+actualizar();
 </script>
 </body>
 </html>
