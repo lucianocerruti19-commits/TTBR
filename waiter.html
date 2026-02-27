@@ -20,7 +20,6 @@ header{text-align:center;}
 
 h1{font-size:26px;margin-bottom:24px;}
 h2{font-size:22px;margin-bottom:14px;}
-
 .section{margin-bottom:32px;}
 
 #tabsCategorias{
@@ -95,11 +94,6 @@ input, textarea{
 </section>
 
 <section class="section">
-  <h2>Pedidos pendientes</h2>
-  <div id="pendientes"></div>
-</section>
-
-<section class="section">
   <h2>Estado de mesas</h2>
   <div id="mesas"></div>
 </section>
@@ -131,8 +125,15 @@ let carrito = [];
 let total = 0;
 let categorias = [];
 
-function sonido(){ new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play(); }
-function vibrar(){ if("vibrate" in navigator) navigator.vibrate([200,100,200]); }
+function sonido(){
+  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+}
+
+function vibrar(){
+  if("vibrate" in navigator){
+    navigator.vibrate([200,100,200]);
+  }
+}
 
 document.addEventListener("click", e=>{
  if(e.target.tagName==="BUTTON") sonido();
@@ -202,32 +203,40 @@ window.quitar=(i)=>{
 };
 
 /* ENVIAR PEDIDO */
-window.enviarPedido=async()=>{
-  if(carrito.length===0) return alert("Carrito vacío");
+window.enviarPedido = async () => {
+
+  if(carrito.length === 0) return alert("Carrito vacío");
 
   await addDoc(collection(db,"pedidos"),{
-    items:carrito,
+    items: carrito,
     total,
-    mesa:document.getElementById("mesa").value,
-    nota:document.getElementById("nota").value,
-    estado:"en_cocina",
-    creadoPor:"mozo",
-    createdAt:new Date()
+    mesa: document.getElementById("mesa").value,
+    nota: document.getElementById("nota").value,
+    estado: "en_cocina",
+    creadoPor: "mozo",
+    createdAt: new Date()
   });
 
-  carrito=[];
-  total=0;
+  carrito = [];
+  total = 0;
   renderCarrito();
-  document.getElementById("nota").value="";
+  document.getElementById("nota").value = "";
+
   vibrar();
-  location.reload();
+
+  document.body.style.background = "#2ecc71";
+  document.body.innerHTML = `
+    <h1 style="text-align:center; color:white; margin-top:40vh;">
+      Pedido enviado ✔
+    </h1>
+  `;
+
+  setTimeout(()=>location.reload(),2000);
 };
 
-/* PEDIDOS */
+/* ESTADO MESAS + COBRAR */
 onSnapshot(collection(db,"pedidos"), snap=>{
-  const pend=document.getElementById("pendientes");
   const cont=document.getElementById("mesas");
-  pend.innerHTML="";
   cont.innerHTML="";
 
   snap.forEach(d=>{
@@ -250,10 +259,12 @@ onSnapshot(collection(db,"pedidos"), snap=>{
 window.cobrar=async(id)=>{
   const mozoCobro=document.getElementById(`cobro-${id}`).value;
   if(!mozoCobro) return alert("Ingrese nombre del mozo");
+
   await updateDoc(doc(db,"pedidos",id),{
     estado:"pagado",
     mozoCobro
   });
+
   vibrar();
 };
 
