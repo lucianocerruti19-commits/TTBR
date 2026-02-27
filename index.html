@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TOTOBAR</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#8a6a2f">
+<link rel="icon" href="logo.png">
+
 <style>
 body{
   background:#050505;
@@ -15,25 +19,11 @@ body{
   margin:0 auto;
 }
 
-header{
-  text-align:center;
-}
+header{text-align:center;}
+.logo{width:180px;}
 
-.logo{
-  width:180px;
-}
+.section{display:none; margin-bottom:32px;}
 
-h2{
-  margin-bottom:20px;
-}
-
-/* SECCIONES */
-.section{
-  display:none;
-  margin-bottom:32px;
-}
-
-/* BOTONES EXACTAMENTE IGUALES AL WAITER */
 button{
   padding:14px 18px;
   font-size:18px;
@@ -47,11 +37,8 @@ button{
   width:100%;
 }
 
-button:active{
-  transform:scale(0.97);
-}
+button:active{transform:scale(0.97);}
 
-/* GRILLA 3 EN 3 */
 .tabs{
   display:grid;
   grid-template-columns:repeat(3, 1fr);
@@ -65,14 +52,12 @@ button:active{
   text-align:center;
 }
 
-/* TARJETAS */
 .card{
   background:#101010;
   padding:18px;
   border-radius:16px;
   margin-bottom:20px;
   border:1px solid #2b2b2b;
-  font-size:18px;
 }
 </style>
 </head>
@@ -95,7 +80,7 @@ button:active{
   </div>
 </div>
 
-<!-- CLIENTE -->
+<!-- CLIENTE (solo menú) -->
 <div id="cliente" class="section">
   <button onclick="mostrar('selector')">⬅ Volver</button>
   <h2>Menú</h2>
@@ -121,8 +106,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let categorias = [];
-let productos = [];
+let categorias=[];
+let productos=[];
 
 function cargarCategorias(){
   onSnapshot(collection(db,"categorias"), snap=>{
@@ -190,6 +175,13 @@ window.mostrar=(id)=>{
   document.querySelectorAll(".section").forEach(s=>s.style.display="none");
   document.getElementById(id).style.display="block";
 };
+
+/* PWA INSTALL */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('service-worker.js');
+  });
+}
 
 cargarCategorias();
 cargarProductos();
