@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel Dueño - Control Profesional</title>
+<title>Panel Dueño - Tutto per Tutti</title>
 
 <style>
 body{
-  background:#050505;
+  background:#0a0a0a;
   color:#f5d28a;
   font-family:Arial;
   padding:20px;
@@ -23,16 +23,23 @@ h1{text-align:center;margin-bottom:20px;}
 }
 
 .card{
-  background:#101010;
+  background:#111;
   border:1px solid #2b2b2b;
   border-radius:16px;
   padding:18px;
-  margin-bottom:15px;
 }
 
 .big{
   font-size:22px;
   font-weight:bold;
+}
+
+input{
+  padding:8px;
+  border-radius:8px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
 }
 
 button{
@@ -42,43 +49,31 @@ button{
   background:linear-gradient(145deg,#d8b14a,#b58c2f);
   font-weight:bold;
   cursor:pointer;
-  margin:5px 5px 10px 0;
-}
-
-input{
-  padding:8px;
-  border-radius:8px;
-  border:1px solid #2b2b2b;
-  background:#111;
-  color:white;
-  margin-bottom:10px;
+  margin-top:10px;
 }
 </style>
 </head>
 <body>
 
-<h1>Panel Dueño - Control Total</h1>
+<h1>Panel Dueño - Tutto per Tutti</h1>
 
 <label>Seleccionar Fecha:</label>
 <input type="date" id="fechaFiltro">
 
 <div class="dashboard">
-  <div class="card">💰 Vendido <div class="big">$<span id="vendido">0</span></div></div>
-  <div class="card">💵 Cobrado <div class="big">$<span id="cobrado">0</span></div></div>
-  <div class="card">📦 Pedidos <div class="big"><span id="pedidos">0</span></div></div>
-  <div class="card">🧾 Pagados <div class="big"><span id="pagados">0</span></div></div>
+  <div class="card">💰 Vendido<div class="big">$<span id="vendido">0</span></div></div>
+  <div class="card">💵 Cobrado<div class="big">$<span id="cobrado">0</span></div></div>
+  <div class="card">📦 Pedidos<div class="big"><span id="pedidos">0</span></div></div>
+  <div class="card">✔ Pagados<div class="big"><span id="pagados">0</span></div></div>
 </div>
 
-<div class="card">
-  <button onclick="cerrarDia()">🔒 Cerrar Caja del Día</button>
-  <button onclick="exportarExcel()">📤 Exportar Excel</button>
-</div>
+<button onclick="exportarExcel()">Exportar Excel</button>
 
 <div id="historial"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey:"TU_API_KEY",
@@ -93,22 +88,53 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const fechaInput = document.getElementById("fechaFiltro");
-const hoy = new Date().toISOString().split("T")[0];
-fechaInput.value = hoy;
-
 let pedidosGlobal = [];
 
+/* ===== DÍA COMERCIAL (corte 5AM) ===== */
+function obtenerFechaNegocio(fechaReal){
+  const hora = fechaReal.getHours();
+  let fechaNegocio = new Date(fechaReal);
+
+  if(hora < 5){
+    fechaNegocio.setDate(fechaNegocio.getDate() - 1);
+  }
+
+  return fechaNegocio.toISOString().split("T")[0];
+}
+
+/* Fecha actual comercial */
+function fechaComercialActual(){
+  return obtenerFechaNegocio(new Date());
+}
+
+/* Setear fecha inicial automáticamente */
+fechaInput.value = fechaComercialActual();
+
+/* Escuchar cambios en Firebase */
 onSnapshot(collection(db,"pedidos"), snap=>{
   pedidosGlobal = [];
   snap.forEach(d=>{
     pedidosGlobal.push({...d.data(), id:d.id});
   });
-  filtrarPorFecha();
+  calcular();
 });
 
-fechaInput.addEventListener("change", filtrarPorFecha);
+/* Recalcular cuando cambia fecha */
+fechaInput.addEventListener("change", calcular);
 
-function filtrarPorFecha(){
+/* Auto actualización cada minuto (por si pasa las 5AM) */
+setInterval(()=>{
+  const actual = fechaComercialActual();
+  if(fechaInput.value === fechaInput.dataset.auto){
+    fechaInput.value = actual;
+    calcular();
+  }
+},60000);
+
+fechaInput.dataset.auto = fechaInput.value;
+
+/* ===== CALCULAR DASHBOARD ===== */
+function calcular(){
 
   const fechaSeleccionada = fechaInput.value;
 
@@ -124,10 +150,10 @@ function filtrarPorFecha(){
 
     if(!p.createdAt) return;
 
-    const fecha = new Date(p.createdAt.seconds*1000);
-    const iso = fecha.toISOString().split("T")[0];
+    const fechaReal = new Date(p.createdAt.seconds*1000);
+    const fechaNegocio = obtenerFechaNegocio(fechaReal);
 
-    if(iso === fechaSeleccionada){
+    if(fechaNegocio === fechaSeleccionada){
 
       pedidos++;
       vendido += p.total || 0;
@@ -138,14 +164,11 @@ function filtrarPorFecha(){
       }
 
       historial.innerHTML += `
-      <div class="card">
+      <div class="card" style="margin-top:10px;">
         <strong>Mesa:</strong> ${p.mesa}<br>
         <strong>Total:</strong> $${p.total}<br>
         <strong>Estado:</strong> ${p.estado}<br>
-        <strong>Mozo Cobró:</strong> ${p.mozoCobro || "-"}<br>
-        <strong>Fecha:</strong> ${fecha.toLocaleString()}<br>
-        <strong>Items:</strong><br>
-        ${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}
+        <strong>Fecha Real:</strong> ${fechaReal.toLocaleString()}
       </div>`;
     }
   });
@@ -156,39 +179,20 @@ function filtrarPorFecha(){
   document.getElementById("pagados").innerText = pagados;
 }
 
-window.cerrarDia = async ()=>{
-  if(!confirm("Cerrar caja del día seleccionado?")) return;
-
-  const fechaSeleccionada = fechaInput.value;
-
-  pedidosGlobal.forEach(async p=>{
-    if(!p.createdAt) return;
-
-    const fecha = new Date(p.createdAt.seconds*1000);
-    const iso = fecha.toISOString().split("T")[0];
-
-    if(iso === fechaSeleccionada && p.estado === "pagado"){
-      await updateDoc(doc(db,"pedidos",p.id),{
-        cierreCaja:true
-      });
-    }
-  });
-
-  alert("Caja cerrada correctamente ✔");
-};
-
+/* ===== EXPORTAR CSV ===== */
 window.exportarExcel = ()=>{
+
   const fechaSeleccionada = fechaInput.value;
-  let csv = "Mesa,Total,Estado,MozoCobro,Fecha\n";
+  let csv = "Mesa,Total,Estado,Fecha\n";
 
   pedidosGlobal.forEach(p=>{
     if(!p.createdAt) return;
 
-    const fecha = new Date(p.createdAt.seconds*1000);
-    const iso = fecha.toISOString().split("T")[0];
+    const fechaReal = new Date(p.createdAt.seconds*1000);
+    const fechaNegocio = obtenerFechaNegocio(fechaReal);
 
-    if(iso === fechaSeleccionada){
-      csv += `${p.mesa},${p.total},${p.estado},${p.mozoCobro||""},${fecha.toLocaleString()}\n`;
+    if(fechaNegocio === fechaSeleccionada){
+      csv += `${p.mesa},${p.total},${p.estado},${fechaReal.toLocaleString()}\n`;
     }
   });
 
