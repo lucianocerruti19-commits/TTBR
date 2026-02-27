@@ -3,67 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tutto Sistema</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#050505">
+<title>TOTOBAR</title>
 
 <style>
 body{
   margin:0;
   background:#050505;
   color:#f5d28a;
-  font-family:'Arial', sans-serif;
+  font-family:Arial, sans-serif;
 }
 
 header{
   text-align:center;
-  padding:28px 10px;
+  padding:25px 10px;
   background:#0b0b0b;
   border-bottom:3px solid #d4af37;
-  box-shadow:0 6px 14px rgba(0,0,0,0.8);
 }
 
-.logo-banner{
-  width:240px;
+.logo{
+  width:220px;
   display:block;
   margin:0 auto;
 }
 
-.tabs{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  padding:10px;
-}
-
-button{
-  padding:12px 18px;
-  border:none;
-  border-radius:14px;
-  background:linear-gradient(135deg, #d4af37, #9b7208);
-  color:#000;
-  font-weight:bold;
-  margin:6px;
-  cursor:pointer;
-  transition:0.2s;
-  box-shadow:0 4px 8px rgba(0,0,0,0.6);
-}
-
-button:hover{
-  transform:translateY(-2px);
-  opacity:0.95;
-}
-
-input, select{
-  padding:12px;
-  border-radius:12px;
-  border:1px solid #2a2a2a;
-  background:#101010;
-  color:#fff;
-  width:100%;
-  box-sizing:border-box;
-  margin-bottom:10px;
+h2{
+  margin-top:10px;
 }
 
 .section{
@@ -71,37 +35,46 @@ input, select{
   padding:20px;
 }
 
+button{
+  padding:12px 18px;
+  border:none;
+  border-radius:14px;
+  background:linear-gradient(135deg,#d4af37,#9b7208);
+  color:#000;
+  font-weight:bold;
+  margin:6px;
+  cursor:pointer;
+}
+
+button:hover{
+  opacity:0.9;
+}
+
+.tabs{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  margin-bottom:15px;
+}
+
 .card{
-  background:#101010;
-  padding:16px;
-  border-radius:14px;
-  margin-bottom:14px;
+  background:#111;
+  padding:15px;
+  border-radius:12px;
+  margin-bottom:12px;
   border:1px solid #222;
-  box-shadow:0 4px 10px rgba(0,0,0,0.7);
-}
-
-h2, h3, h4{
-  margin:0 0 12px 0;
-  color:#f5d28a;
-}
-
-canvas{
-  width:100%;
-  max-width:440px;
-  background:#0b0b0b;
-  border-radius:14px;
-  padding:8px;
 }
 </style>
 </head>
 <body>
 
 <header>
-  <img src="logo.png" class="logo-banner">
-  <h2>Tutto Sistema</h2>
+  <img src="logo.png" class="logo">
+  <h2>TOTOBAR</h2>
 </header>
 
-<div id="selector" class="section" style="display:block">
+<!-- SELECTOR -->
+<div id="selector" class="section" style="display:block;">
   <h3>Seleccionar modo</h3>
   <button onclick="login('cliente')">Cliente</button>
   <button onclick="login('mozo')">Mozo</button>
@@ -118,77 +91,31 @@ canvas{
   <div id="productos"></div>
 </div>
 
-<!-- MOZO -->
-<div id="mozo" class="section">
-  <button onclick="mostrar('selector')">⬅ Volver</button>
-  <h3>Mozo</h3>
-  <div id="mozoPedidos"></div>
-</div>
-
-<!-- COCINA -->
-<div id="cocina" class="section">
-  <button onclick="mostrar('selector')">⬅ Volver</button>
-  <h3>Cocina</h3>
-  <div id="cocinaPedidos"></div>
-</div>
-
-<!-- ADMIN -->
-<div id="admin" class="section">
-  <button onclick="mostrar('selector')">⬅ Volver</button>
-
-  <h3>Admin Productos</h3>
-
-  <input id="prodNombre" placeholder="Producto">
-  <input id="prodPrecio" placeholder="Precio">
-  <select id="prodCategoria"></select>
-
-  <button onclick="agregarProducto()">Agregar</button>
-
-  <h4>Crear nueva sección</h4>
-  <input id="nuevaCategoria" placeholder="Nombre de sección">
-  <button onclick="crearCategoria()">Crear sección</button>
-
-  <div id="listaProductos"></div>
-</div>
-
-<!-- DUENO -->
-<div id="dueno" class="section">
-  <button onclick="mostrar('selector')">⬅ Volver</button>
-  <h3>Panel Dueño</h3>
-  <div class="card">
-    <h4>Ventas</h4>
-    <p>Hoy: $<span id="vHoy">0</span></p>
-    <p>Semana: $<span id="vSemana">0</span></p>
-    <p>Mes: $<span id="vMes">0</span></p>
-  </div>
-  <canvas id="grafico"></canvas>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const firebaseConfig={
-apiKey:"TU_API_KEY",
-authDomain:"menu-pro-app.firebaseapp.com",
-projectId:"menu-pro-app",
-storageBucket:"menu-pro-app.firebasestorage.app",
-messagingSenderId:"42917274964",
-appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "menu-pro-app.firebaseapp.com",
+  projectId: "menu-pro-app",
+  storageBucket: "menu-pro-app.firebasestorage.app",
+  messagingSenderId: "42917274964",
+  appId: "1:42917274964:web:3be3c9c124b9c69b8994c1"
 };
 
-const db=getFirestore(initializeApp(firebaseConfig));
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-let categorias=[];
+let categorias = [];
 
 function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"),snap=>{
+  onSnapshot(collection(db,"categorias"), snap=>{
     categorias=[];
-    snap.forEach(d=>categorias.push(d.data().nombre));
+    snap.forEach(d=>{
+      categorias.push(d.data().nombre);
+    });
     renderTabs();
-    cargarSelectCategorias();
   });
 }
 
@@ -200,71 +127,60 @@ function renderTabs(){
   });
 }
 
-function cargarSelectCategorias(){
-  const select=document.getElementById("prodCategoria");
-  if(!select) return;
-  select.innerHTML="";
-  categorias.forEach(cat=>{
-    select.innerHTML+=`<option value="${cat}">${cat}</option>`;
-  });
-}
-
 window.mostrarCat = (cat)=>{
   const prodDiv=document.getElementById("productos");
   prodDiv.innerHTML="";
-  onSnapshot(collection(db,"productos"),snap=>{
+
+  onSnapshot(collection(db,"productos"), snap=>{
     prodDiv.innerHTML="";
     snap.forEach(d=>{
       const p=d.data();
       if(p.categoria === cat){
         prodDiv.innerHTML+=`
-        <div class="card">
-          <h4>${p.nombre}</h4>
-          <p>$${p.precio}</p>
-        </div>`;
+          <div class="card">
+            <h4>${p.nombre}</h4>
+            <p>$${p.precio}</p>
+          </div>
+        `;
       }
     });
   });
 };
 
-window.crearCategoria=async()=>{
-  const nombre=document.getElementById("nuevaCategoria").value;
-  if(!nombre) return;
-  await addDoc(collection(db,"categorias"),{nombre});
-  document.getElementById("nuevaCategoria").value="";
-};
+window.login = (rol)=>{
 
-window.agregarProducto=async()=>{
-  const nombre=document.getElementById("prodNombre").value;
-  const precio=document.getElementById("prodPrecio").value;
-  const categoria=document.getElementById("prodCategoria").value;
-  if(!nombre||!precio) return;
-  await addDoc(collection(db,"productos"),{nombre,precio,categoria});
-  document.getElementById("prodNombre").value="";
-  document.getElementById("prodPrecio").value="";
-};
-
-window.login = (rol) => {
-  if (rol === "cliente") {
+  if(rol==="cliente"){
     mostrar("cliente");
     return;
   }
-  const pass = prompt("Contraseña:");
-  if (!pass) return;
 
-  if(
-    (rol==="dueno" && pass==="toto321") ||
-    (rol==="admin" && pass==="toto321") ||
-    (rol==="cocina" && pass==="cocina2026") ||
-    (rol==="mozo" && pass==="mozo2026")
-  ){
-    mostrar(rol);
-  } else {
-    alert("Contraseña incorrecta");
+  const pass = prompt("Contraseña:");
+  if(!pass) return;
+
+  if(rol==="mozo" && pass==="mozo2026"){
+    window.location.href="waiter.html";
+    return;
   }
+
+  if(rol==="cocina" && pass==="cocina2026"){
+    window.location.href="kitchen.html";
+    return;
+  }
+
+  if(rol==="admin" && pass==="toto321"){
+    window.location.href="admin.html";
+    return;
+  }
+
+  if(rol==="dueno" && pass==="toto321"){
+    window.location.href="dueño.html";
+    return;
+  }
+
+  alert("Contraseña incorrecta");
 };
 
-window.mostrar = (id) => {
+window.mostrar = (id)=>{
   document.querySelectorAll(".section").forEach(s=>s.style.display="none");
   document.getElementById(id).style.display="block";
 };
