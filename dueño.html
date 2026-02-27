@@ -1,208 +1,26 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel Dueño - TOTO BAR</title>
+<div id="dueno" class="section">
+  <button onclick="mostrar('selector')">⬅ Volver</button>
 
-<style>
-body{
-  background:#0a0a0a;
-  color:#f5d28a;
-  font-family:Arial;
-  padding:20px;
-}
+  <h3>Panel Dueño Premium</h3>
 
-h1{text-align:center;margin-bottom:20px;}
+  <div class="card">
+    <h4>Ventas del día (<span id="fechaHoy"></span>)</h4>
+    <p>Vendido: $<span id="vHoy">0</span></p>
+    <p>Pedidos pagados: <span id="pHoy">0</span></p>
+  </div>
 
-.dashboard{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:15px;
-  margin-bottom:20px;
-}
+  <div class="card">
+    <h4>Histórico</h4>
+    <input type="date" id="filtroFecha">
+    <button onclick="filtrarFecha()">Filtrar</button>
+    <button onclick="mostrarHoy()">Hoy</button>
+    <div id="historial"></div>
+  </div>
 
-.card{
-  background:#111;
-  border:1px solid #2b2b2b;
-  border-radius:16px;
-  padding:18px;
-}
+  <div class="card">
+    <h4>Gráfico mensual</h4>
+    <canvas id="grafico"></canvas>
+  </div>
 
-.big{
-  font-size:22px;
-  font-weight:bold;
-}
-
-input{
-  padding:8px;
-  border-radius:8px;
-  border:1px solid #2b2b2b;
-  background:#111;
-  color:white;
-}
-
-button{
-  padding:10px 16px;
-  border:none;
-  border-radius:10px;
-  background:linear-gradient(145deg,#d8b14a,#b58c2f);
-  font-weight:bold;
-  cursor:pointer;
-  margin-top:10px;
-}
-</style>
-</head>
-<body>
-
-<h1>Panel Dueño - TOTO BAR</h1>
-
-<label>Seleccionar Fecha:</label>
-<input type="date" id="fechaFiltro">
-
-<div class="dashboard">
-  <div class="card">💰 Vendido<div class="big">$<span id="vendido">0</span></div></div>
-  <div class="card">💵 Cobrado<div class="big">$<span id="cobrado">0</span></div></div>
-  <div class="card">📦 Pedidos<div class="big"><span id="pedidos">0</span></div></div>
-  <div class="card">✔ Pagados<div class="big"><span id="pagados">0</span></div></div>
+  <button onclick="exportarExcel()">Exportar Excel</button>
 </div>
-
-<button onclick="exportarExcel()">Exportar Excel</button>
-
-<div id="historial"></div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey:"TU_API_KEY",
-  authDomain:"menu-pro-app.firebaseapp.com",
-  projectId:"menu-pro-app",
-  storageBucket:"menu-pro-app.firebasestorage.app",
-  messagingSenderId:"42917274964",
-  appId:"1:42917274964:web:3be3c9c124b9c69b8994c1"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const fechaInput = document.getElementById("fechaFiltro");
-let pedidosGlobal = [];
-
-/* ===== DÍA COMERCIAL (corte 5AM) ===== */
-function obtenerFechaNegocio(fechaReal){
-  const hora = fechaReal.getHours();
-  let fechaNegocio = new Date(fechaReal);
-
-  if(hora < 5){
-    fechaNegocio.setDate(fechaNegocio.getDate() - 1);
-  }
-
-  return fechaNegocio.toISOString().split("T")[0];
-}
-
-/* Fecha actual comercial */
-function fechaComercialActual(){
-  return obtenerFechaNegocio(new Date());
-}
-
-/* Setear fecha inicial automáticamente */
-fechaInput.value = fechaComercialActual();
-
-/* Escuchar cambios en Firebase */
-onSnapshot(collection(db,"pedidos"), snap=>{
-  pedidosGlobal = [];
-  snap.forEach(d=>{
-    pedidosGlobal.push({...d.data(), id:d.id});
-  });
-  calcular();
-});
-
-/* Recalcular cuando cambia fecha */
-fechaInput.addEventListener("change", calcular);
-
-/* Auto actualización cada minuto (por si pasa las 5AM) */
-setInterval(()=>{
-  const actual = fechaComercialActual();
-  if(fechaInput.value === fechaInput.dataset.auto){
-    fechaInput.value = actual;
-    calcular();
-  }
-},60000);
-
-fechaInput.dataset.auto = fechaInput.value;
-
-/* ===== CALCULAR DASHBOARD ===== */
-function calcular(){
-
-  const fechaSeleccionada = fechaInput.value;
-
-  let vendido=0;
-  let cobrado=0;
-  let pedidos=0;
-  let pagados=0;
-
-  const historial = document.getElementById("historial");
-  historial.innerHTML="";
-
-  pedidosGlobal.forEach(p=>{
-
-    if(!p.createdAt) return;
-
-    const fechaReal = new Date(p.createdAt.seconds*1000);
-    const fechaNegocio = obtenerFechaNegocio(fechaReal);
-
-    if(fechaNegocio === fechaSeleccionada){
-
-      pedidos++;
-      vendido += p.total || 0;
-
-      if(p.estado === "pagado"){
-        cobrado += p.total || 0;
-        pagados++;
-      }
-
-      historial.innerHTML += `
-      <div class="card" style="margin-top:10px;">
-        <strong>Mesa:</strong> ${p.mesa}<br>
-        <strong>Total:</strong> $${p.total}<br>
-        <strong>Estado:</strong> ${p.estado}<br>
-        <strong>Fecha Real:</strong> ${fechaReal.toLocaleString()}
-      </div>`;
-    }
-  });
-
-  document.getElementById("vendido").innerText = vendido;
-  document.getElementById("cobrado").innerText = cobrado;
-  document.getElementById("pedidos").innerText = pedidos;
-  document.getElementById("pagados").innerText = pagados;
-}
-
-/* ===== EXPORTAR CSV ===== */
-window.exportarExcel = ()=>{
-
-  const fechaSeleccionada = fechaInput.value;
-  let csv = "Mesa,Total,Estado,Fecha\n";
-
-  pedidosGlobal.forEach(p=>{
-    if(!p.createdAt) return;
-
-    const fechaReal = new Date(p.createdAt.seconds*1000);
-    const fechaNegocio = obtenerFechaNegocio(fechaReal);
-
-    if(fechaNegocio === fechaSeleccionada){
-      csv += `${p.mesa},${p.total},${p.estado},${fechaReal.toLocaleString()}\n`;
-    }
-  });
-
-  const blob = new Blob([csv],{type:"text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `ventas_${fechaSeleccionada}.csv`;
-  a.click();
-};
-</script>
-</body>
-</html>
