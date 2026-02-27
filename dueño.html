@@ -3,127 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TOTOBAR</title>
+<title>Dueño Premium</title>
 
 <style>
 body{
-  background: radial-gradient(circle at top, #111, #050505);
+  background:#050505;
   color:#f5d28a;
   font-family:Arial;
-  padding:14px;
-  max-width:900px;
-  margin:0 auto;
+  padding:18px;
 }
 
-/* LOGO GRANDE */
-header{
-  text-align:center;
-  margin-bottom:20px;
+h1{text-align:center;}
+
+.card{
+  background:#101010;
+  border:1px solid #2b2b2b;
+  border-radius:16px;
+  padding:20px;
+  margin:12px 0;
 }
 
-.logo{
-  width:280px;
-  animation: pop 0.6s ease;
-}
-
-@keyframes pop{
-  0%{transform:scale(0.8); opacity:0;}
-  100%{transform:scale(1); opacity:1;}
-}
-
-/* SECCIONES */
-.section{
-  display:none;
-  animation: fadeIn 0.35s ease;
-}
-
-@keyframes fadeIn{
-  from{opacity:0; transform:translateY(8px);}
-  to{opacity:1; transform:translateY(0);}
-}
-
-/* BOTONES ORO WAITER */
 button{
   padding:14px 18px;
-  font-size:18px;
   border:none;
   border-radius:12px;
   background:linear-gradient(145deg, #8a6a2f, #5f4a1a);
   color:white;
   font-weight:bold;
-  box-shadow:0 6px 18px rgba(138,106,47,0.6);
-  transition:transform 0.15s ease, box-shadow 0.15s ease;
-  margin-top:10px;
-  width:100%;
+  box-shadow:0 4px 12px rgba(138,106,47,0.6);
+  margin:6px 0;
 }
 
-button:hover{
-  transform:translateY(-2px);
-  box-shadow:0 10px 24px rgba(138,106,47,0.8);
+input[type=date]{
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #2b2b2b;
+  background:#111;
+  color:white;
+  margin-bottom:10px;
 }
 
-button:active{
-  transform:scale(0.97);
-}
-
-/* GRILLA 3 EN 3 */
-.tabs{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:10px;
-  justify-items:center;
-  margin-bottom:20px;
-}
-
-.tabs button{
-  width:100%;
-  text-align:center;
-}
-
-/* TARJETAS */
-.card{
-  background:#101010;
-  padding:18px;
-  border-radius:16px;
-  margin-bottom:20px;
-  border:1px solid rgba(212,175,55,0.25);
-  font-size:18px;
-  box-shadow:0 4px 14px rgba(0,0,0,0.8);
-}
+canvas{width:100%; max-width:500px;}
 </style>
 </head>
 <body>
 
-<header>
-  <img src="logo.png" class="logo">
-  <h2>TOTOBAR</h2>
-</header>
+<h1>Panel Dueño Premium</h1>
 
-<!-- SELECTOR -->
-<div id="selector" class="section" style="display:block;">
-  <h2>Seleccionar modo</h2>
-  <div class="tabs">
-    <button onclick="login('cliente')">Cliente</button>
-    <button onclick="login('mozo')">Mozo</button>
-    <button onclick="login('cocina')">Cocina</button>
-    <button onclick="login('admin')">Admin</button>
-    <button onclick="login('dueno')">Dueño</button>
-  </div>
+<!-- ESTADÍSTICAS -->
+<div class="card">
+  <h2>Ventas del día (<span id="fechaHoy"></span>)</h2>
+  <p>Vendido: $<span id="vHoy">0</span></p>
+  <p>Pedidos pagados: <span id="pHoy">0</span></p>
 </div>
 
-<!-- CLIENTE SOLO VISUAL -->
-<div id="cliente" class="section">
-  <button onclick="mostrar('selector')">⬅ Volver</button>
-  <h2>Menú</h2>
-  <div class="tabs" id="tabsCategorias"></div>
-  <div id="productos"></div>
+<!-- HISTORIAL -->
+<div class="card">
+  <h2>Historial</h2>
+  <input type="date" id="filtroFecha">
+  <button onclick="filtrarFecha()">Filtrar</button>
+  <button onclick="mostrarHoy()">Hoy</button>
+  <button onclick="limpiarDia()">Limpiar día (archivar)</button>
+  <button onclick="nuevoDia()">Nuevo día</button>
+  <button onclick="exportarExcel()">Exportar Excel</button>
+
+  <div id="historial"></div>
 </div>
 
-<audio id="clickSound" src="click.mp3"></audio>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  updateDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const firebaseConfig={
  apiKey:"TU_API_KEY",
@@ -137,84 +93,121 @@ const firebaseConfig={
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let categorias=[];
-let productos=[];
+let fechaActual = new Date().toDateString();
 
-/* CARGAR DATOS */
-function cargarCategorias(){
-  onSnapshot(collection(db,"categorias"), snap=>{
-    categorias=[];
-    snap.forEach(d=>categorias.push(d.data().nombre));
-    renderTabs();
-  });
+/* CAMBIO AUTOMÁTICO DE DÍA (5AM) */
+function checkCambioDia(){
+  const ahora = new Date();
+  if(ahora.getHours() >= 5 && fechaActual !== ahora.toDateString()){
+    fechaActual = ahora.toDateString();
+  }
 }
+setInterval(checkCambioDia, 60000);
 
-function cargarProductos(){
-  onSnapshot(collection(db,"productos"), snap=>{
-    productos=[];
-    snap.forEach(d=>productos.push(d.data()));
-  });
-}
+/* VENTAS DEL DÍA */
+onSnapshot(collection(db,"pedidos"), snap=>{
+  let vendido = 0;
+  let pagados = 0;
 
-function renderTabs(){
-  const tabs=document.getElementById("tabsCategorias");
-  tabs.innerHTML="";
-  categorias.forEach(cat=>{
-    tabs.innerHTML+=`<button onclick="mostrarCat('${cat}')">${cat}</button>`;
-  });
-}
+  snap.forEach(d=>{
+    const p = d.data();
+    if(p.archivado) return;
 
-/* MOSTRAR PRODUCTOS */
-window.mostrarCat=(cat)=>{
-  const prodDiv=document.getElementById("productos");
-  prodDiv.innerHTML="";
+    const fecha = new Date(p.createdAt.seconds*1000).toDateString();
 
-  productos.forEach(p=>{
-    if(p.categoria===cat){
-      prodDiv.innerHTML+=`
-        <div class="card">
-          <h3>${p.nombre}</h3>
-          <p>$${p.precio}</p>
-        </div>
-      `;
+    if(fecha === fechaActual && (p.estado === "pagado" || p.estado === "entregado")){
+      vendido += p.total;
+      pagados++;
     }
   });
 
-  reproducirSonido();
-};
+  document.getElementById("fechaHoy").innerText = fechaActual;
+  document.getElementById("vHoy").innerText = vendido;
+  document.getElementById("pHoy").innerText = pagados;
+});
 
-function reproducirSonido(){
-  const audio=document.getElementById("clickSound");
-  audio.currentTime=0;
-  audio.play();
+/* HISTORIAL */
+function cargarHistorial(fecha){
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    const h = document.getElementById("historial");
+    h.innerHTML = "";
+
+    snap.forEach(d=>{
+      const p = d.data();
+      const f = new Date(p.createdAt.seconds*1000).toDateString();
+
+      if(p.archivado) return;
+      if(fecha && f !== fecha) return;
+
+      h.innerHTML += `
+      <div class="card">
+        <h3>Mesa ${p.mesa}</h3>
+        <p>Total: $${p.total}</p>
+        <p>Estado: ${p.estado}</p>
+        <p>Fecha: ${new Date(p.createdAt.seconds*1000).toLocaleString()}</p>
+      </div>`;
+    });
+  });
 }
 
-/* LOGIN */
-window.login=(rol)=>{
-  if(rol==="cliente"){
-    mostrar("cliente");
-    return;
-  }
+/* LIMPIAR DÍA (ARCHIVAR) */
+window.limpiarDia = () => {
+  if(!confirm("Limpiar día y archivar pruebas?")) return;
 
-  const pass=prompt("Contraseña:");
-  if(!pass) return;
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(async d=>{
+      const p = d.data();
+      const fecha = new Date(p.createdAt.seconds*1000).toDateString();
+      if(fecha === fechaActual){
+        await updateDoc(doc(db,"pedidos", d.id),{
+          archivado: true
+        });
+      }
+    });
+  });
 
-  if(rol==="mozo" && pass==="mozo2026") window.location.href="waiter.html";
-  else if(rol==="cocina" && pass==="cocina2026") window.location.href="kitchen.html";
-  else if(rol==="admin" && pass==="toto321") window.location.href="admin.html";
-  else if(rol==="dueno" && pass==="toto321") window.location.href="dueño.html";
-  else alert("Contraseña incorrecta");
+  document.getElementById("historial").innerHTML = "";
+  alert("Día archivado ✔");
 };
 
-/* CAMBIAR SECCIÓN */
-window.mostrar=(id)=>{
-  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="block";
+/* EXPORT EXCEL */
+window.exportarExcel = () => {
+  let csv = "mesa,total,estado,fecha\n";
+
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(d=>{
+      const p = d.data();
+      if(p.archivado) return;
+      const fecha = new Date(p.createdAt.seconds*1000).toLocaleString();
+      csv += `${p.mesa},${p.total},${p.estado},${fecha}\n`;
+    });
+
+    const blob = new Blob([csv],{type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ventas.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 };
 
-cargarCategorias();
-cargarProductos();
+/* FUNCIONES */
+window.mostrarHoy = () => cargarHistorial(fechaActual);
+
+window.filtrarFecha = () => {
+  const f = document.getElementById("filtroFecha").value;
+  if(!f) return;
+  cargarHistorial(new Date(f).toDateString());
+};
+
+window.nuevoDia = () => {
+  if(!confirm("Nuevo día?")) return;
+  fechaActual = new Date().toDateString();
+  document.getElementById("historial").innerHTML = "";
+};
+
+cargarHistorial(fechaActual);
 </script>
-
 </body>
 </html>
