@@ -8,16 +8,17 @@
 <style>
 body{
   margin:0;
-  background:#050505;
+  background:radial-gradient(circle at top,#111,#050505 70%);
   color:#f5d28a;
   font-family:Arial, sans-serif;
 }
 
 header{
   text-align:center;
-  padding:25px 10px;
+  padding:30px 10px;
   background:#0b0b0b;
-  border-bottom:3px solid #d4af37;
+  border-bottom:2px solid #d4af37;
+  box-shadow:0 4px 20px rgba(212,175,55,0.2);
 }
 
 .logo{
@@ -28,54 +29,62 @@ header{
 
 h2{
   margin-top:10px;
+  letter-spacing:2px;
 }
 
 .section{
   display:none;
-  padding:20px;
+  padding:25px;
 }
 
+/* BOTONES ORO METÁLICO PREMIUM */
 button{
-  padding:14px 20px;
+  padding:18px;
   border:none;
-  border-radius:16px;
-  background:linear-gradient(135deg,#d4af37,#b8860b);
+  border-radius:20px;
+  background:linear-gradient(145deg,#f8e7a0,#d4af37,#a67c00);
   color:#000;
   font-weight:bold;
-  margin:6px;
+  font-size:16px;
   cursor:pointer;
-  min-width:120px;
-  transition:0.2s;
-  font-size:15px;
+  transition:all 0.25s ease;
+  box-shadow:
+    inset 0 3px 6px rgba(255,255,255,0.5),
+    inset 0 -4px 8px rgba(0,0,0,0.4),
+    0 8px 18px rgba(212,175,55,0.35);
+}
+
+button:hover{
+  transform:translateY(-2px);
 }
 
 button:active{
   transform:scale(0.95);
 }
 
+/* CATEGORÍAS 3 EN 3 CENTRADAS */
 .tabs{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  margin-bottom:15px;
-  position:sticky;
-  top:0;
-  background:#050505;
-  padding:10px 0;
-  z-index:10;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  margin:20px auto;
+  max-width:750px;
 }
 
+/* TARJETAS PRODUCTOS */
 .card{
-  background:#111;
-  padding:15px;
-  border-radius:14px;
-  margin-bottom:12px;
+  background:linear-gradient(145deg,#111,#0a0a0a);
+  padding:18px;
+  border-radius:18px;
+  margin-bottom:15px;
   border:1px solid #222;
+  box-shadow:0 6px 20px rgba(0,0,0,0.6);
   transition:0.2s;
 }
 
 .card:hover{
   transform:scale(1.02);
+  border:1px solid #d4af37;
 }
 </style>
 </head>
@@ -88,23 +97,24 @@ button:active{
 
 <!-- SELECTOR -->
 <div id="selector" class="section" style="display:block;">
-  <h3>Seleccionar modo</h3>
-  <button onclick="login('cliente')">Cliente</button>
-  <button onclick="login('mozo')">Mozo</button>
-  <button onclick="login('cocina')">Cocina</button>
-  <button onclick="login('admin')">Admin</button>
-  <button onclick="login('dueno')">Dueño</button>
+  <h3 style="text-align:center;">Seleccionar modo</h3>
+  <div class="tabs">
+    <button onclick="login('cliente')">Cliente</button>
+    <button onclick="login('mozo')">Mozo</button>
+    <button onclick="login('cocina')">Cocina</button>
+    <button onclick="login('admin')">Admin</button>
+    <button onclick="login('dueno')">Dueño</button>
+  </div>
 </div>
 
-<!-- CLIENTE SOLO VISUAL -->
+<!-- CLIENTE -->
 <div id="cliente" class="section">
   <button onclick="mostrar('selector')">⬅ Volver</button>
-  <h3>Menú</h3>
+  <h3 style="text-align:center;">Menú</h3>
   <div class="tabs" id="tabsCategorias"></div>
   <div id="productos"></div>
 </div>
 
-<!-- SONIDO -->
 <audio id="clickSound" src="click.mp3"></audio>
 
 <script type="module">
@@ -126,7 +136,6 @@ const db = getFirestore(app);
 let categorias = [];
 let productos = [];
 
-// 🔹 Cargar categorías
 function cargarCategorias(){
   onSnapshot(collection(db,"categorias"), snap=>{
     categorias=[];
@@ -137,7 +146,6 @@ function cargarCategorias(){
   });
 }
 
-// 🔹 Cargar productos una sola vez
 function cargarProductos(){
   onSnapshot(collection(db,"productos"), snap=>{
     productos=[];
@@ -147,7 +155,6 @@ function cargarProductos(){
   });
 }
 
-// 🔹 Render botones categorías
 function renderTabs(){
   const tabs=document.getElementById("tabsCategorias");
   tabs.innerHTML="";
@@ -156,7 +163,6 @@ function renderTabs(){
   });
 }
 
-// 🔹 Mostrar productos sin salto
 window.mostrarCat = (cat)=>{
   const prodDiv=document.getElementById("productos");
   prodDiv.innerHTML="";
@@ -175,47 +181,29 @@ window.mostrarCat = (cat)=>{
   reproducirSonido();
 };
 
-// 🔊 Sonido
 function reproducirSonido(){
-  const audio = document.getElementById("clickSound");
-  audio.currentTime = 0;
+  const audio=document.getElementById("clickSound");
+  audio.currentTime=0;
   audio.play();
 }
 
-window.login = (rol)=>{
-
+window.login=(rol)=>{
   if(rol==="cliente"){
     mostrar("cliente");
     return;
   }
 
-  const pass = prompt("Contraseña:");
+  const pass=prompt("Contraseña:");
   if(!pass) return;
 
-  if(rol==="mozo" && pass==="mozo2026"){
-    window.location.href="waiter.html";
-    return;
-  }
-
-  if(rol==="cocina" && pass==="cocina2026"){
-    window.location.href="kitchen.html";
-    return;
-  }
-
-  if(rol==="admin" && pass==="toto321"){
-    window.location.href="admin.html";
-    return;
-  }
-
-  if(rol==="dueno" && pass==="toto321"){
-    window.location.href="dueño.html";
-    return;
-  }
-
-  alert("Contraseña incorrecta");
+  if(rol==="mozo" && pass==="mozo2026") window.location.href="waiter.html";
+  else if(rol==="cocina" && pass==="cocina2026") window.location.href="kitchen.html";
+  else if(rol==="admin" && pass==="toto321") window.location.href="admin.html";
+  else if(rol==="dueno" && pass==="toto321") window.location.href="dueño.html";
+  else alert("Contraseña incorrecta");
 };
 
-window.mostrar = (id)=>{
+window.mostrar=(id)=>{
   document.querySelectorAll(".section").forEach(s=>s.style.display="none");
   document.getElementById(id).style.display="block";
 };
