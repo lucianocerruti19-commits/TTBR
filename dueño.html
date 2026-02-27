@@ -15,20 +15,20 @@ body{
 
 header{text-align:center;}
 
-.logo{
-  width:280px;
-}
+.logo{width:280px;}
 
-h1{
-  margin-top:10px;
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:12px;
 }
 
 .card{
   background:#101010;
   border:1px solid #2b2b2b;
   border-radius:16px;
-  padding:20px;
-  margin:12px 0;
+  padding:18px;
+  font-size:18px;
 }
 
 button{
@@ -40,15 +40,15 @@ button{
   font-weight:bold;
   box-shadow:0 4px 12px rgba(138,106,47,0.6);
   margin:6px 0;
+  width:100%;
 }
 
-input[type=date]{
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #2b2b2b;
-  background:#111;
-  color:white;
-  margin-bottom:10px;
+section{
+  margin-top:20px;
+}
+
+canvas{
+  max-width:500px;
 }
 </style>
 </head>
@@ -59,26 +59,46 @@ input[type=date]{
   <h1>Panel Dueño</h1>
 </header>
 
-<!-- ESTADÍSTICAS -->
-<div class="card">
-  <h2>Hoy (<span id="fechaHoy"></span>)</h2>
-  <p>Pedidos: <span id="pedidosHoy">0</span></p>
-  <p>Cobrados: <span id="cobradosHoy">0</span></p>
-  <p>Pagados: <span id="pagadosHoy">0</span></p>
-  <p>Vendido: $<span id="vendidoHoy">0</span></p>
+<!-- MÉTRICAS -->
+<div class="grid">
+  <div class="card">
+    <h3>Pedidos</h3>
+    <p>$<span id="pedidosTotal">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Cobrados</h3>
+    <p>$<span id="cobradosTotal">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Pagados</h3>
+    <p>$<span id="pagadosTotal">0</span></p>
+  </div>
+  <div class="card">
+    <h3>Total vendido</h3>
+    <p>$<span id="vendidoTotal">0</span></p>
+  </div>
 </div>
+
+<!-- BOTONES -->
+<section>
+  <button onclick="limpiarDia()">Limpiar día</button>
+  <button onclick="nuevoDia()">Nuevo día</button>
+  <button onclick="exportarExcel()">Exportar Excel</button>
+</section>
+
+<!-- GRÁFICO -->
+<section>
+  <h2>Gráfico mensual</h2>
+  <canvas id="chart"></canvas>
+</section>
 
 <!-- HISTORIAL -->
-<div class="card">
+<section>
   <h2>Historial</h2>
-  <input type="date" id="filtroFecha">
-  <button onclick="filtrarFecha()">Filtrar</button>
-  <button onclick="mostrarHoy()">Hoy</button>
-  <button onclick="limpiarDia()">Limpiar día (archivar pruebas)</button>
-  <button onclick="exportarExcel()">Exportar Excel</button>
-
   <div id="historial"></div>
-</div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -103,15 +123,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let fechaActual = new Date().toDateString();
-
-/* CAMBIO AUTOMÁTICO DE DÍA (5AM) */
-function checkCambioDia(){
-  const ahora = new Date();
-  if(ahora.getHours() >= 5 && fechaActual !== ahora.toDateString()){
-    fechaActual = ahora.toDateString();
-  }
-}
-setInterval(checkCambioDia, 60000);
+let chart;
 
 /* ESTADÍSTICAS */
 onSnapshot(collection(db,"pedidos"), snap=>{
@@ -119,30 +131,55 @@ onSnapshot(collection(db,"pedidos"), snap=>{
   let cobrados = 0;
   let pagados = 0;
   let vendido = 0;
+  let mensual = {};
 
   snap.forEach(d=>{
     const p = d.data();
     if(p.archivado) return;
 
-    const fecha = new Date(p.createdAt.seconds*1000).toDateString();
+    const fecha = new Date(p.createdAt.seconds*1000);
+    const fstr = fecha.toLocaleString('default',{month:'short',year:'numeric'});
 
-    if(fecha === fechaActual){
-      pedidos++;
-      if(p.estado === "pagado") pagados++;
-      if(p.estado === "pagado" || p.estado === "entregado") cobrados++;
-      if(p.estado === "pagado" || p.estado === "entregado") vendido += p.total;
+    mensual[fstr] = (mensual[fstr] || 0) + (p.estado==="pagado" ? p.total : 0);
+
+    if(fecha.toDateString() !== fechaActual) return;
+
+    pedidos += p.total;
+    if(p.estado === "pagado") {
+      pagados += p.total;
+      cobrados += p.total;
+      vendido += p.total;
+    }
+    else if(p.estado === "entregado") {
+      cobrados += p.total;
+      vendido += p.total;
     }
   });
 
-  document.getElementById("fechaHoy").innerText = fechaActual;
-  document.getElementById("pedidosHoy").innerText = pedidos;
-  document.getElementById("cobradosHoy").innerText = cobrados;
-  document.getElementById("pagadosHoy").innerText = pagados;
-  document.getElementById("vendidoHoy").innerText = vendido;
+  document.getElementById("pedidosTotal").innerText = pedidos;
+  document.getElementById("cobradosTotal").innerText = cobrados;
+  document.getElementById("pagadosTotal").innerText = pagados;
+  document.getElementById("vendidoTotal").innerText = vendido;
+
+  actualizarGrafico(mensual);
 });
 
+/* GRAFICO */
+function actualizarGrafico(datos){
+  const ctx = document.getElementById("chart").getContext("2d");
+  if(chart) chart.destroy();
+
+  chart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:Object.keys(datos),
+      datasets:[{label:'Ventas', data:Object.values(datos)}]
+    }
+  });
+}
+
 /* HISTORIAL */
-function cargarHistorial(fecha){
+function cargarHistorial(){
   onSnapshot(collection(db,"pedidos"), snap=>{
     const h = document.getElementById("historial");
     h.innerHTML = "";
@@ -150,9 +187,6 @@ function cargarHistorial(fecha){
     snap.forEach(d=>{
       const p = d.data();
       if(p.archivado) return;
-
-      const f = new Date(p.createdAt.seconds*1000).toDateString();
-      if(fecha && f !== fecha) return;
 
       h.innerHTML += `
       <div class="card">
@@ -165,9 +199,9 @@ function cargarHistorial(fecha){
   });
 }
 
-/* LIMPIAR DÍA (ARCHIVAR) */
+/* LIMPIAR DÍA */
 window.limpiarDia = () => {
-  if(!confirm("Limpiar día y archivar pruebas?")) return;
+  if(!confirm("Limpiar día?")) return;
 
   onSnapshot(collection(db,"pedidos"), snap=>{
     snap.forEach(async d=>{
@@ -182,7 +216,12 @@ window.limpiarDia = () => {
   });
 
   document.getElementById("historial").innerHTML = "";
-  alert("Día archivado ✔");
+};
+
+/* NUEVO DÍA */
+window.nuevoDia = () => {
+  fechaActual = new Date().toDateString();
+  document.getElementById("historial").innerHTML = "";
 };
 
 /* EXPORT EXCEL */
@@ -207,22 +246,7 @@ window.exportarExcel = () => {
   });
 };
 
-/* FUNCIONES */
-window.mostrarHoy = () => cargarHistorial(fechaActual);
-
-window.filtrarFecha = () => {
-  const f = document.getElementById("filtroFecha").value;
-  if(!f) return;
-  cargarHistorial(new Date(f).toDateString());
-};
-
-window.nuevoDia = () => {
-  if(!confirm("Nuevo día?")) return;
-  fechaActual = new Date().toDateString();
-  document.getElementById("historial").innerHTML = "";
-};
-
-cargarHistorial(fechaActual);
+cargarHistorial();
 </script>
 </body>
 </html>
