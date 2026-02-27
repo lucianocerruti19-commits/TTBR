@@ -52,8 +52,6 @@ input[type=date]{
   background:#111;
   color:white;
 }
-
-canvas{max-width:500px;}
 </style>
 </head>
 <body>
@@ -68,7 +66,13 @@ canvas{max-width:500px;}
   <h3>Filtrar por fecha</h3>
   <input type="date" id="fechaFiltro">
   <button onclick="filtrarFecha()">Filtrar</button>
+</section>
+
+<!-- BOTONES -->
+<section>
+  <button onclick="limpiarDia()">Limpiar día</button>
   <button onclick="nuevoDia()">Nuevo día</button>
+  <button onclick="exportarExcel()">Exportar Excel</button>
 </section>
 
 <!-- MÉTRICAS -->
@@ -91,26 +95,20 @@ canvas{max-width:500px;}
   </div>
 </div>
 
-<!-- GRÁFICO -->
-<section>
-  <h2>Gráfico mensual</h2>
-  <canvas id="chart"></canvas>
-</section>
-
 <!-- DETALLE -->
 <section>
   <h2>Detalle</h2>
   <div id="historial"></div>
 </section>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 import {
   getFirestore,
   collection,
-  onSnapshot
+  onSnapshot,
+  updateDoc,
+  doc
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -124,25 +122,15 @@ const firebaseConfig = {
 
 const db = getFirestore(initializeApp(firebaseConfig));
 
-let chart;
 let filtro = null;
 
-/* AUTOMÁTICO 5 AM */
-setInterval(()=>{
-  const h = new Date();
-  if(h.getHours() === 5 && h.getMinutes() === 0){
-    nuevoDia();
-  }
-}, 60000);
-
-/* ACTUALIZAR TODO */
+/* ACTUALIZAR */
 function actualizar(){
   onSnapshot(collection(db,"pedidos"), snap=>{
     let pedidos = 0;
     let cobrados = 0;
     let pagados = 0;
     let vendido = 0;
-    let mensual = {};
     let detalle = false;
 
     const cont = document.getElementById("historial");
@@ -154,14 +142,10 @@ function actualizar(){
 
       const fecha = p.createdAt?.seconds
         ? new Date(p.createdAt.seconds*1000)
-        : new Date(0);
+        : null;
 
-      const fDia = fecha.toDateString();
-      const fMes = fecha.toLocaleString('default',{month:'short',year:'numeric'});
+      const fDia = fecha ? fecha.toDateString() : "";
 
-      mensual[fMes] = (mensual[fMes] || 0) + (p.estado==="pagado" ? p.total : 0);
-
-      // filtro
       if(filtro && fDia !== filtro) return;
 
       detalle = true;
@@ -181,7 +165,7 @@ function actualizar(){
           <h3>Mesa ${p.mesa || "?"}</h3>
           <p>Total: $${p.total || 0}</p>
           <p>Estado: ${p.estado || "sin estado"}</p>
-          <p>Fecha: ${fecha.toLocaleString()}</p>
+          <p>Fecha: ${fecha ? fecha.toLocaleString() : "sin fecha"}</p>
           <p>Items:<br>${(p.items||[]).map(i=>`${i.prod} - $${i.precio}`).join("<br>")}</p>
         </div>`;
     });
@@ -198,8 +182,6 @@ function actualizar(){
     document.getElementById("cobradosTotal").innerText = cobrados;
     document.getElementById("pagadosTotal").innerText = pagados;
     document.getElementById("vendidoTotal").innerText = vendido;
-
-    actualizarGrafico(mensual);
   });
 }
 
@@ -211,26 +193,70 @@ window.filtrarFecha = () => {
   actualizar();
 };
 
+/* LIMPIAR (archiva) */
+window.limpiarDia = () => {
+  if(!confirm("Limpiar día?")) return;
+
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(async d=>{
+      const p = d.data();
+      const fecha = p.createdAt?.seconds
+        ? new Date(p.createdAt.seconds*1000).toDateString()
+        : "";
+
+      if(fecha === new Date().toDateString()){
+        await updateDoc(doc(db,"pedidos", d.id),{
+          archivado: true
+        });
+      }
+    });
+  });
+
+  document.getElementById("historial").innerHTML = "";
+};
+
 /* NUEVO DÍA */
 window.nuevoDia = () => {
   filtro = null;
   document.getElementById("fechaFiltro").value = "";
-  actualizar();
+
+  document.getElementById("pedidosTotal").innerText = 0;
+  document.getElementById("cobradosTotal").innerText = 0;
+  document.getElementById("pagadosTotal").innerText = 0;
+  document.getElementById("vendidoTotal").innerText = 0;
+
+  document.getElementById("historial").innerHTML = `
+    <div class="card">
+      <h3>Nuevo día</h3>
+      <p>Pedidos: $0</p>
+    </div>`;
 };
 
-/* GRÁFICO */
-function actualizarGrafico(datos){
-  const ctx = document.getElementById("chart").getContext("2d");
-  if(chart) chart.destroy();
+/* EXPORT EXCEL */
+window.exportarExcel = () => {
+  let csv = "mesa,total,estado,fecha,items\n";
 
-  chart = new Chart(ctx,{
-    type:'bar',
-    data:{
-      labels:Object.keys(datos),
-      datasets:[{label:'Ventas', data:Object.values(datos)}]
-    }
+  onSnapshot(collection(db,"pedidos"), snap=>{
+    snap.forEach(d=>{
+      const p = d.data();
+      if(p.archivado) return;
+
+      const fecha = p.createdAt?.seconds
+        ? new Date(p.createdAt.seconds*1000).toLocaleString()
+        : "";
+
+      const items = (p.items||[]).map(i=>`${i.prod}-${i.precio}`).join("|");
+
+      csv += `${p.mesa},${p.total},${p.estado},${fecha},${items}\n`;
+    });
+
+    const blob = new Blob([csv],{type:"text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ventas.csv";
+    a.click();
   });
-}
+};
 
 actualizar();
 </script>
